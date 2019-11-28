@@ -1,0 +1,24 @@
+apiVersion: jianzhiunique.github.io/v1
+kind: Kafka
+metadata:
+  name: example-kafka
+spec:
+  # Add fields here
+  size: 3
+  image: wurstmeister/kafka:2.11-0.11.0.3
+  disk_limit: 10Gi
+  disk_request: 1Gi
+  storage_class_name: standard
+  kafka_manager_host: ".km.com"
+  zk_size: 3
+  zk_disk_limit: 10Gi
+  zk_disk_request: 1Gi
+  default_partitions: 3
+  log_hours: 168
+  log_bytes: -1
+  replication_factor: 2
+  message_max_bytes: 1073741824
+  compression_type: producer
+  unclean_election: false
+  cleanup_policy: delete
+  message_timestamp_type: CreateTime
