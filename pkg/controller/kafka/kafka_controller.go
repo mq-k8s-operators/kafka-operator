@@ -111,6 +111,9 @@ func (r *ReconcileKafka) Reconcile(request reconcile.Request) (reconcile.Result,
 		return reconcile.Result{}, fmt.Errorf("GET Kafka CR fail : %s",err)
 	}
 
+	//check and handle default value
+	checkCR(instance)
+
 	// Define a new Pod object
 	//pod := newPodForCR(instance)
 
@@ -723,5 +726,95 @@ func newKafkaManagerIngressForCR(cr *jianzhiuniquev1.Kafka) *v1beta12.Ingress{
 		Spec: v1beta12.IngressSpec{
 			Rules:   rules,
 		},
+	}
+}
+
+func checkCR(cr *jianzhiuniquev1.Kafka){
+	/*
+	  size: 3
+	  image: wurstmeister/kafka:2.11-0.11.0.3
+	  disk_limit: 10Gi
+	  disk_request: 1Gi
+	  storage_class_name: standard
+	  kafka_manager_host: ".km.com"
+	  zk_size: 3
+	  zk_disk_limit: 10Gi
+	  zk_disk_request: 1Gi
+	 */
+
+	if cr.Spec.Size == 0 {
+		cr.Spec.Size = 3
+	}
+
+	if cr.Spec.Image == "" {
+		cr.Spec.Image = "wurstmeister/kafka:2.11-0.11.0.3"
+	}
+
+	if cr.Spec.DiskLimit == "" {
+		cr.Spec.DiskLimit = "500Gi"
+	}
+
+	if cr.Spec.DiskRequest == "" {
+		cr.Spec.DiskRequest = "100Gi"
+	}
+
+	if cr.Spec.KafkaManagerHost == "" {
+		cr.Spec.KafkaManagerHost = ".km.com"
+	}
+
+	if cr.Spec.ZkSize == 0 {
+		cr.Spec.ZkSize = 3
+	}
+
+	if cr.Spec.ZkDiskLimit == "" {
+		cr.Spec.ZkDiskLimit = "100Gi"
+	}
+
+	if cr.Spec.ZkDiskRequest == "" {
+		cr.Spec.ZkDiskRequest = "20Gi"
+	}
+
+	/*
+	  default_partitions: 3
+	  log_hours: 168
+	  log_bytes: -1
+	  replication_factor: 2
+	  message_max_bytes: 1073741824
+	  compression_type: producer
+	  unclean_election: false
+	  cleanup_policy: delete
+	  message_timestamp_type: CreateTime
+	*/
+
+	if cr.Spec.KafkaNumPartitions == 0 {
+		cr.Spec.KafkaNumPartitions = 3
+	}
+
+	if cr.Spec.KafkaLogRetentionHours == 0 {
+		cr.Spec.KafkaLogRetentionHours = 168
+	}
+
+	if cr.Spec.KafkaLogRetentionBytes == 0 {
+		cr.Spec.KafkaLogRetentionHours = -1
+	}
+
+	if cr.Spec.KafkaDefaultReplicationFactor == 0 {
+		cr.Spec.KafkaDefaultReplicationFactor = 2
+	}
+
+	if cr.Spec.KafkaMessageMaxBytes == 0 {
+		cr.Spec.KafkaMessageMaxBytes = 1073741824
+	}
+
+	if cr.Spec.KafkaCompressionType == "" {
+		cr.Spec.KafkaCompressionType = "producer"
+	}
+
+	if cr.Spec.KafkaLogCleanupPolicy == "" {
+		cr.Spec.KafkaLogCleanupPolicy = "delete"
+	}
+
+	if cr.Spec.KafkaLogMessageTimestampType == "" {
+		cr.Spec.KafkaLogMessageTimestampType = "CreateTime"
 	}
 }
