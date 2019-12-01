@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/jianzhiunique/kafka-operator/pkg/web"
 	"os"
 	"runtime"
 
@@ -15,6 +16,7 @@ import (
 	"github.com/jianzhiunique/kafka-operator/pkg/controller"
 	"github.com/jianzhiunique/kafka-operator/version"
 
+	_ "github.com/jianzhiunique/kafka-operator/pkg/web"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	kubemetrics "github.com/operator-framework/operator-sdk/pkg/kube-metrics"
 	"github.com/operator-framework/operator-sdk/pkg/leader"
@@ -144,6 +146,9 @@ func main() {
 	}
 
 	log.Info("Starting the Cmd.")
+
+	// Start http api
+	web.StartWeb(mgr)
 
 	// Start the Cmd
 	if err := mgr.Start(signals.SetupSignalHandler()); err != nil {
