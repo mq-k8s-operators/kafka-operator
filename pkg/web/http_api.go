@@ -12,7 +12,7 @@ import (
 func StartWeb(manager manager.Manager) {
 	http := gin.Default()
 
-	http.GET("/ping", func(c *gin.Context) {
+	http.GET("/new", func(c *gin.Context) {
 		err := manager.GetClient().Create(context.TODO(), &jianzhiuniquev1.Kafka{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "Kafka",
@@ -33,8 +33,20 @@ func StartWeb(manager manager.Manager) {
 		}
 
 		c.JSON(200, gin.H{
-			"message": "pong",
+			"message": "ok",
+		})
+	}).GET("/list", func(c *gin.Context) {
+		list := jianzhiuniquev1.KafkaList{}
+		err := manager.GetClient().List(context.TODO(), &list)
+
+		if err != nil {
+			fmt.Print(err)
+		}
+
+		c.JSON(200, gin.H{
+			"data": list,
 		})
 	})
+
 	go http.Run() // listen and serve on 0.0.0.0:8080 (for windows "localhost:8080")
 }
