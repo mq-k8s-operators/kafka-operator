@@ -16,8 +16,8 @@ type KafkaSpec struct {
 
 	Image string `json:"image,omitempty"`
 	// +kubebuilder:validation:Minimum=3
-	Size int32 `json:"size,omitempty"`
-	DiskLimit string `json:"disk_limit,omitempty"`
+	Size        int32  `json:"size,omitempty"`
+	DiskLimit   string `json:"disk_limit,omitempty"`
 	DiskRequest string `json:"disk_request,omitempty"`
 	// we suggest to use local pv, so the storage class name must be set
 	StorageClassName string `json:"storage_class_name"`
@@ -26,22 +26,22 @@ type KafkaSpec struct {
 	// we will generate a ingress whose rule host is test.km.com for kafka manager
 	// then you can bind hosts test.km.com to access it
 	// default value is .km.com
-	KafkaManagerHost string `json:"kafka_manager_host"`
+	KafkaManagerHost string `json:"kafka_manager_host,omitempty"`
 	// +kubebuilder:validation:Enum=1,3,5,7
-	ZkSize int32 `json:"zk_size,omitempty"`
-	ZkDiskLimit string `json:"zk_disk_limit,omitempty"`
+	ZkSize        int32  `json:"zk_size,omitempty"`
+	ZkDiskLimit   string `json:"zk_disk_limit,omitempty"`
 	ZkDiskRequest string `json:"zk_disk_request,omitempty"`
 
 	//kafka's config items
 	// +kubebuilder:validation:Minimum=1
-	KafkaNumPartitions int32 `json:"default_partitions,omitempty"`
-	KafkaLogRetentionHours int32 `json:"log_hours,omitempty"`
-	KafkaLogRetentionBytes int64 `json:"log_bytes,omitempty"`
+	KafkaNumPartitions            int32 `json:"default_partitions,omitempty"`
+	KafkaLogRetentionHours        int32 `json:"log_hours,omitempty"`
+	KafkaLogRetentionBytes        int64 `json:"log_bytes,omitempty"`
 	KafkaDefaultReplicationFactor int32 `json:"replication_factor,omitempty"`
-	KafkaMessageMaxBytes int64 `json:"message_max_bytes,omitempty"`
+	KafkaMessageMaxBytes          int64 `json:"message_max_bytes,omitempty"`
 	// +kubebuilder:validation:Enum=gzip,snappy,lz4,uncompressed,producer
-	KafkaCompressionType string `json:"compression_type,omitempty"`
-	KafkaUncleanLeaderElectionEnable bool `json:"unclean_election,omitempty"`
+	KafkaCompressionType             string `json:"compression_type,omitempty"`
+	KafkaUncleanLeaderElectionEnable bool   `json:"unclean_election,omitempty"`
 	// +kubebuilder:validation:Enum=delete,compact
 	KafkaLogCleanupPolicy string `json:"cleanup_policy,omitempty"`
 	// +kubebuilder:validation:Enum=CreateTime,LogAppendTime
@@ -54,6 +54,9 @@ type KafkaStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
+	ZkUrl           string `json:zk_url`
+	kafkaUrl        string `json:kafka_url`
+	KafkaManagerUrl string `json:kafka_manager_url`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
