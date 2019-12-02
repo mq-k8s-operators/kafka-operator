@@ -43,6 +43,8 @@ func StartWeb(manager manager.Manager) {
 				"status": 0,
 				"data":   "",
 			})
+
+			return
 		}
 		err := manager.GetClient().Create(context.TODO(), &jianzhiuniquev1.Kafka{
 			TypeMeta: metav1.TypeMeta{

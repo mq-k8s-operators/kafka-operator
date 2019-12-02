@@ -154,7 +154,7 @@ func (r *ReconcileKafka) Reconcile(request reconcile.Request) (reconcile.Result,
 	changed := checkCR(instance)
 
 	if changed {
-		r.log.Info("Setting default settings for kafka")
+		r.log.Info("Setting default settings for kafka", instance)
 		if err := r.client.Update(context.TODO(), instance); err != nil {
 			return reconcile.Result{}, fmt.Errorf("Setting default fail : %s", err)
 		}
