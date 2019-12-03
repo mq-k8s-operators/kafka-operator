@@ -151,7 +151,7 @@ func (r *ReconcileKafka) Reconcile(request reconcile.Request) (reconcile.Result,
 	}
 
 	//check if default values will be used
-	changed := checkCR(instance)
+	changed := utils.CheckCR(instance)
 
 	if changed {
 		r.log.Info("Setting default settings for kafka", instance)
@@ -162,30 +162,23 @@ func (r *ReconcileKafka) Reconcile(request reconcile.Request) (reconcile.Result,
 		return reconcile.Result{Requeue: true}, nil
 	}
 
-	//zk
-	zk := utils.NewZkForCR(instance)
-
-	if err = r.reconcileZooKeeper(instance, zk); err != nil {
-		return reconcile.Result{}, err
+	// reconcile
+	for _, fun := range []reconcileFun{
+		r.reconcileZooKeeper,
+		r.reconcileKafka,
+		r.reconcileKafkaManager,
+		r.reconcileClusterStatus,
+	} {
+		if err = fun(instance); err != nil {
+			return reconcile.Result{}, err
+		}
 	}
 
-	//kafka
-	if err = r.reconcileKafka(instance, zk); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	//kafka manager
-	if err = r.reconcileKafkaManager(instance, zk); err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// Pod already exists - don't requeue
-	// sts已经存在，对比
-	//reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileKafka) reconcileZooKeeper(instance *jianzhiuniquev1.Kafka, zk *v1beta1.ZookeeperCluster) (err error) {
+func (r *ReconcileKafka) reconcileZooKeeper(instance *jianzhiuniquev1.Kafka) (err error) {
+	zk := utils.NewZkForCR(instance)
 	// Set zk instance as the owner and controller
 	if err := controllerutil.SetControllerReference(instance, zk, r.scheme); err != nil {
 		return fmt.Errorf("SET ZK Owner fail : %s", err)
@@ -206,7 +199,18 @@ func (r *ReconcileKafka) reconcileZooKeeper(instance *jianzhiuniquev1.Kafka, zk 
 	} else if err != nil {
 		//有异常
 		return fmt.Errorf("GET ZK Fail : %s", err)
+	} else {
+		//检查是否有变化，如果有变化，则Update
+		//对于zk，目前只更新节点数
+		if zk.Spec.Replicas != foundzk.Spec.Replicas {
+			foundzk.Spec.Replicas = zk.Spec.Replicas
+			err = r.client.Update(context.TODO(), foundzk)
+			if err != nil {
+				return fmt.Errorf("Update ZK Fail : %s", err)
+			}
+		}
 	}
+
 	//检查zk是否就绪
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: zk.Name, Namespace: zk.Namespace}, foundzk)
 	if err != nil {
@@ -217,11 +221,12 @@ func (r *ReconcileKafka) reconcileZooKeeper(instance *jianzhiuniquev1.Kafka, zk 
 		return fmt.Errorf("Zk Not Ready")
 	}
 	r.log.Info("Zk Ready", "Namespace", zk.Namespace, "Name", zk.Name, "found", foundzk)
+
 	return nil
 }
 
-func (r *ReconcileKafka) reconcileKafka(instance *jianzhiuniquev1.Kafka, zk *v1beta1.ZookeeperCluster) (err error) {
-	sts := utils.NewStsForCR(instance, zk)
+func (r *ReconcileKafka) reconcileKafka(instance *jianzhiuniquev1.Kafka) (err error) {
+	sts := utils.NewStsForCR(instance)
 	// Set Kafka instance as the owner and controller
 	if err := controllerutil.SetControllerReference(instance, sts, r.scheme); err != nil {
 		return fmt.Errorf("SET Kafka Owner fail : %s", err)
@@ -237,12 +242,15 @@ func (r *ReconcileKafka) reconcileKafka(instance *jianzhiuniquev1.Kafka, zk *v1b
 		if err != nil {
 			return fmt.Errorf("Create sts fail : %s", err)
 		}
-
-		//创建成功
-
 	} else if err != nil {
 		//有异常
 		return fmt.Errorf("GET sts fail : %s", err)
+	} else {
+		utils.SyncKafkaSts(found, sts)
+		err = r.client.Update(context.TODO(), found)
+		if err != nil {
+			return fmt.Errorf("Update ZK Fail : %s", err)
+		}
 	}
 
 	//检查kfk是否可用
@@ -263,11 +271,12 @@ func (r *ReconcileKafka) reconcileKafka(instance *jianzhiuniquev1.Kafka, zk *v1b
 	} else if err != nil {
 		return fmt.Errorf("GET svc fail : %s", err)
 	}
+
 	return nil
 }
 
-func (r *ReconcileKafka) reconcileKafkaManager(instance *jianzhiuniquev1.Kafka, zk *v1beta1.ZookeeperCluster) (err error) {
-	km := utils.NewKafkaManagerForCR(instance, zk)
+func (r *ReconcileKafka) reconcileKafkaManager(instance *jianzhiuniquev1.Kafka) (err error) {
+	km := utils.NewKafkaManagerForCR(instance)
 
 	if err := controllerutil.SetControllerReference(instance, km, r.scheme); err != nil {
 		return fmt.Errorf("SET Kafka Owner fail : %s", err)
@@ -318,114 +327,10 @@ func (r *ReconcileKafka) reconcileKafkaManager(instance *jianzhiuniquev1.Kafka, 
 	} else if err != nil {
 		return fmt.Errorf("GET kafka manager ingress fail : %s", err)
 	}
+
 	return nil
 }
 
-func checkCR(cr *jianzhiuniquev1.Kafka) bool {
-	/*
-	  size: 3
-	  image: wurstmeister/kafka:2.11-0.11.0.3
-	  disk_limit: 10Gi
-	  disk_request: 1Gi
-	  storage_class_name: standard
-	  kafka_manager_host: ".km.com"
-	  zk_size: 3
-	  zk_disk_limit: 10Gi
-	  zk_disk_request: 1Gi
-	*/
-	var changed bool
-
-	if cr.Spec.Size == 0 || cr.Spec.Size < 3 {
-		cr.Spec.Size = 3
-		changed = true
-	}
-
-	if cr.Spec.Image == "" {
-		cr.Spec.Image = "wurstmeister/kafka:2.11-0.11.0.3"
-		changed = true
-	}
-
-	if cr.Spec.DiskLimit == "" {
-		cr.Spec.DiskLimit = "500Gi"
-		changed = true
-	}
-
-	if cr.Spec.DiskRequest == "" {
-		cr.Spec.DiskRequest = "100Gi"
-		changed = true
-	}
-
-	if cr.Spec.KafkaManagerHost == "" {
-		cr.Spec.KafkaManagerHost = ".km.com"
-		changed = true
-	}
-
-	if cr.Spec.ZkSize == 0 {
-		cr.Spec.ZkSize = 3
-		changed = true
-	}
-
-	if cr.Spec.ZkDiskLimit == "" {
-		cr.Spec.ZkDiskLimit = "500Gi"
-		changed = true
-	}
-
-	if cr.Spec.ZkDiskRequest == "" {
-		cr.Spec.ZkDiskRequest = "20Gi"
-		changed = true
-	}
-
-	/*
-	  default_partitions: 3
-	  log_hours: 168
-	  log_bytes: -1
-	  replication_factor: 2
-	  message_max_bytes: 1073741824
-	  compression_type: producer
-	  unclean_election: false
-	  cleanup_policy: delete
-	  message_timestamp_type: CreateTime
-	*/
-
-	if cr.Spec.KafkaNumPartitions == 0 {
-		cr.Spec.KafkaNumPartitions = 3
-		changed = true
-	}
-
-	if cr.Spec.KafkaLogRetentionHours == 0 {
-		cr.Spec.KafkaLogRetentionHours = 168
-		changed = true
-	}
-
-	if cr.Spec.KafkaLogRetentionBytes == 0 {
-		cr.Spec.KafkaLogRetentionHours = -1
-		changed = true
-	}
-
-	if cr.Spec.KafkaDefaultReplicationFactor == 0 {
-		cr.Spec.KafkaDefaultReplicationFactor = 2
-		changed = true
-	}
-
-	if cr.Spec.KafkaMessageMaxBytes == 0 {
-		cr.Spec.KafkaMessageMaxBytes = 1073741824
-		changed = true
-	}
-
-	if cr.Spec.KafkaCompressionType == "" {
-		cr.Spec.KafkaCompressionType = "producer"
-		changed = true
-	}
-
-	if cr.Spec.KafkaLogCleanupPolicy == "" {
-		cr.Spec.KafkaLogCleanupPolicy = "delete"
-		changed = true
-	}
-
-	if cr.Spec.KafkaLogMessageTimestampType == "" {
-		cr.Spec.KafkaLogMessageTimestampType = "CreateTime"
-		changed = true
-	}
-
-	return changed
+func (r *ReconcileKafka) reconcileClusterStatus(instance *jianzhiuniquev1.Kafka) (err error) {
+	return r.client.Status().Update(context.TODO(), instance)
 }

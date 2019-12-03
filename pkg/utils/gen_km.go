@@ -2,7 +2,6 @@ package utils
 
 import (
 	jianzhiuniquev1 "github.com/jianzhiunique/kafka-operator/pkg/apis/jianzhiunique/v1"
-	"github.com/pravega/zookeeper-operator/pkg/apis/zookeeper/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -10,8 +9,9 @@ import (
 	"time"
 )
 
-func NewKafkaManagerForCR(cr *jianzhiuniquev1.Kafka, zk *v1beta1.ZookeeperCluster) *appsv1.Deployment {
-	zkUrl := zk.Name + "-client:2181"
+func NewKafkaManagerForCR(cr *jianzhiuniquev1.Kafka) *appsv1.Deployment {
+	zkUrl := cr.Status.ZkUrl
+	cr.Status.KafkaManagerPassword = GetRandomString(16)
 
 	cport := corev1.ContainerPort{ContainerPort: 9000}
 	cports := make([]corev1.ContainerPort, 0)
@@ -33,7 +33,7 @@ func NewKafkaManagerForCR(cr *jianzhiuniquev1.Kafka, zk *v1beta1.ZookeeperCluste
 		},
 		corev1.EnvVar{
 			Name:  "KAFKA_MANAGER_PASSWORD",
-			Value: GetRandomString(16),
+			Value: cr.Status.KafkaManagerPassword,
 		},
 	)
 

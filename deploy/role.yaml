@@ -66,3 +66,9 @@ rules:
   - '*'
   verbs:
   - '*'
+- apiGroups:
+    - zookeeper.pravega.io
+  resources:
+    - '*'
+  verbs:
+    - '*'

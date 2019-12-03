@@ -9,6 +9,8 @@ import (
 )
 
 func NewZkForCR(cr *jianzhiuniquev1.Kafka) *v1beta1.ZookeeperCluster {
+	zkName := "kfk-zk-" + cr.Name
+	cr.Status.ZkUrl = zkName + "-client:2181"
 	return &v1beta1.ZookeeperCluster{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "ZookeeperCluster",

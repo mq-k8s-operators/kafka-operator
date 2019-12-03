@@ -6,7 +6,7 @@ require (
 	github.com/gin-gonic/gin v1.5.0
 	github.com/go-openapi/spec v0.19.0
 	github.com/operator-framework/operator-sdk v0.12.0
-	github.com/pravega/zookeeper-operator v0.2.5-rc0
+	github.com/pravega/zookeeper-operator v0.0.0-20191010215457-62ee0e3c053e
 	github.com/spf13/pflag v1.0.3
 	k8s.io/api v0.0.0
 	k8s.io/apimachinery v0.0.0

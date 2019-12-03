@@ -2,16 +2,20 @@ package utils
 
 import (
 	jianzhiuniquev1 "github.com/jianzhiunique/kafka-operator/pkg/apis/jianzhiunique/v1"
-	"github.com/pravega/zookeeper-operator/pkg/apis/zookeeper/v1beta1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
+	"strconv"
 )
 
-func NewStsForCR(cr *jianzhiuniquev1.Kafka, zk *v1beta1.ZookeeperCluster) *appsv1.StatefulSet {
-	zkUrl := zk.Name + "-client:2181"
+func NewStsForCR(cr *jianzhiuniquev1.Kafka) *appsv1.StatefulSet {
+	zkUrl := cr.Status.ZkUrl
+
+	if cr.DeletionTimestamp.IsZero() {
+
+	}
 
 	accessModes := make([]corev1.PersistentVolumeAccessMode, 0)
 	accessModes = append(accessModes, corev1.ReadWriteOnce)
@@ -178,7 +182,7 @@ func NewStsForCR(cr *jianzhiuniquev1.Kafka, zk *v1beta1.ZookeeperCluster) *appsv
 		},
 		corev1.EnvVar{
 			Name:  "KAFKA_HEAP_OPTS",
-			Value: "-Xms1g -Xmx1g -XX:MetaspaceSize=96m -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:G1HeapRegionSize=16M -XX:MinMetaspaceFreeRatio=50 -XX:MaxMetaspaceFreeRatio=80 -XX:ParallelGCThreads=16",
+			Value: "-Xms" + strconv.Itoa(cr.Spec.KafkaJvmXms) + "g -Xmx" + strconv.Itoa(cr.Spec.KafkaJvmXmx) + "g -XX:MetaspaceSize=96m -XX:+UseG1GC -XX:MaxGCPauseMillis=20 -XX:InitiatingHeapOccupancyPercent=35 -XX:G1HeapRegionSize=16M -XX:MinMetaspaceFreeRatio=50 -XX:MaxMetaspaceFreeRatio=80 -XX:ParallelGCThreads=16",
 		},
 	)
 	vms := make([]corev1.VolumeMount, 0)

@@ -32,6 +32,12 @@ type KafkaSpec struct {
 	ZkDiskLimit   string `json:"zk_disk_limit,omitempty"`
 	ZkDiskRequest string `json:"zk_disk_request,omitempty"`
 
+	//kafka jvm
+	// +kubebuilder:validation:Minimum=1
+	KafkaJvmXms int `json:"kafka_jvm_xms,omitempty"`
+	// +kubebuilder:validation:Minimum=1
+	KafkaJvmXmx int `json:"kafka_jvm_xmx,omitempty"`
+
 	//kafka's config items
 	// +kubebuilder:validation:Minimum=1
 	KafkaNumPartitions            int32 `json:"default_partitions,omitempty"`
@@ -54,9 +60,10 @@ type KafkaStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-	ZkUrl           string `json:zk_url`
-	kafkaUrl        string `json:kafka_url`
-	KafkaManagerUrl string `json:kafka_manager_url`
+	ZkUrl                string `json:zk_url`
+	KafkaUrl             string `json:kafka_url`
+	KafkaManagerUrl      string `json:kafka_manager_url`
+	KafkaManagerPassword string `json:kafka_manager_password`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

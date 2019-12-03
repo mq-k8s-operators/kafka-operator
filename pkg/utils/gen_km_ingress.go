@@ -9,6 +9,7 @@ import (
 )
 
 func NewKafkaManagerIngressForCR(cr *jianzhiuniquev1.Kafka) *v1beta12.Ingress {
+	cr.Status.KafkaManagerUrl = cr.Name + cr.Spec.KafkaManagerHost
 	paths := make([]v1beta12.HTTPIngressPath, 0)
 	path := v1beta12.HTTPIngressPath{
 		Path: "/",
@@ -23,7 +24,7 @@ func NewKafkaManagerIngressForCR(cr *jianzhiuniquev1.Kafka) *v1beta12.Ingress {
 
 	rules := make([]v1beta12.IngressRule, 0)
 	rule := v1beta12.IngressRule{
-		Host: cr.Name + cr.Spec.KafkaManagerHost,
+		Host: cr.Status.KafkaManagerUrl,
 		IngressRuleValue: v1beta12.IngressRuleValue{
 			HTTP: &v1beta12.HTTPIngressRuleValue{
 				Paths: paths,

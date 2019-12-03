@@ -404,6 +404,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pquerna/cachecontrol v0.0.0-20171018203845-0dec1b30a021/go.mod h1:prYjPmNq4d1NPVmpShWobRqXY3q7Vp+80DqgxxUrUIA=
 github.com/pquerna/ffjson v0.0.0-20180717144149-af8b230fcd20/go.mod h1:YARuvh7BUWHNhzDq2OM5tzR2RiCcN2D7sapiKyCel/M=
+github.com/pravega/zookeeper-operator v0.0.0-20191010215457-62ee0e3c053e h1:ofwZrh4Yuaq6i3zHDSaM/lR5JS7i/lWzj3M+2peIFwg=
+github.com/pravega/zookeeper-operator v0.0.0-20191010215457-62ee0e3c053e/go.mod h1:Cd9JAhiM25KjEJQ8BNIkC+DZ82LVtCpVmBOdSGItP6c=
 github.com/pravega/zookeeper-operator v0.2.5-rc0 h1:+KloS5NC8D/LPHODC+A04BvcPDWTha6HdDT0rU+6yN8=
 github.com/pravega/zookeeper-operator v0.2.5-rc0/go.mod h1:Cd9JAhiM25KjEJQ8BNIkC+DZ82LVtCpVmBOdSGItP6c=
 github.com/prometheus/client_golang v0.8.0/go.mod h1:7SWBe2y4D6OKWSNQJUaRYU/AaXPKyh/dDVn+NZz0KFw=
