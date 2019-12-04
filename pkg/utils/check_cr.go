@@ -39,6 +39,26 @@ func CheckCR(cr *jianzhiuniquev1.Kafka) bool {
 		changed = true
 	}
 
+	if cr.Spec.MemoryLimit == "" {
+		cr.Spec.DiskLimit = "32Gi"
+		changed = true
+	}
+
+	if cr.Spec.MemoryRequest == "" {
+		cr.Spec.MemoryRequest = "1Gi"
+		changed = true
+	}
+
+	if cr.Spec.CpuLimit == "" {
+		cr.Spec.CpuLimit = "4000m"
+		changed = true
+	}
+
+	if cr.Spec.CpuRequest == "" {
+		cr.Spec.CpuRequest = "500m"
+		changed = true
+	}
+
 	if cr.Spec.KafkaManagerHost == "" {
 		cr.Spec.KafkaManagerHost = ".km.com"
 		changed = true

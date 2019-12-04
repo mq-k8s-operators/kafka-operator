@@ -114,47 +114,47 @@ func NewStsForCR(cr *jianzhiuniquev1.Kafka) *appsv1.StatefulSet {
 		},
 		corev1.EnvVar{
 			Name:  "KAFKA_NUM_PARTITIONS",
-			Value: "3",
+			Value: strconv.Itoa(int(cr.Spec.KafkaNumPartitions)),
 		},
 		corev1.EnvVar{
 			Name:  "KAFKA_LOG_RETENTION_HOURS",
-			Value: "168",
+			Value: strconv.Itoa(int(cr.Spec.KafkaLogRetentionHours)),
 		},
 		corev1.EnvVar{
 			Name:  "KAFKA_LOG_RETENTION_BYTES",
-			Value: "-1",
+			Value: strconv.FormatInt(cr.Spec.KafkaLogRetentionBytes, 10),
 		},
 		corev1.EnvVar{
 			Name:  "KAFKA_DEFAULT_REPLICATION_FACTOR",
-			Value: "2",
+			Value: strconv.Itoa(int(cr.Spec.KafkaDefaultReplicationFactor)),
 		},
 		corev1.EnvVar{
 			Name:  "KAFKA_MESSAGE_MAX_BYTES",
-			Value: "1073741824",
+			Value: strconv.FormatInt(cr.Spec.KafkaMessageMaxBytes, 10),
 		},
 		corev1.EnvVar{
 			Name:  "KAFKA_COMPRESSION_TYPE",
-			Value: "producer",
+			Value: cr.Spec.KafkaCompressionType,
 		},
 		corev1.EnvVar{
 			Name:  "KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE",
-			Value: "false",
+			Value: strconv.FormatBool(cr.Spec.KafkaUncleanLeaderElectionEnable),
 		},
 		corev1.EnvVar{
 			Name:  "KAFKA_LOG_CLEANUP_POLICY",
-			Value: "delete",
+			Value: cr.Spec.KafkaLogCleanupPolicy,
 		},
 		corev1.EnvVar{
 			Name:  "KAFKA_LOG_MESSAGE_TIMESTAMP_TYPE",
-			Value: "CreateTime",
+			Value: cr.Spec.KafkaLogMessageTimestampType,
 		},
 		corev1.EnvVar{
 			Name:  "KAFKA_NUM_NETWORK_THREADS",
-			Value: "3",
+			Value: getNumThreads(cr.Spec.Size),
 		},
 		corev1.EnvVar{
 			Name:  "KAFKA_NUM_IO_THREADS",
-			Value: "8",
+			Value: getNumThreads(cr.Spec.Size),
 		},
 		corev1.EnvVar{
 			Name:  "KAFKA_NUM_RECOVERY_THREADS_PER_DATA_DIR",
@@ -209,6 +209,16 @@ func NewStsForCR(cr *jianzhiuniquev1.Kafka) *appsv1.StatefulSet {
 		VolumeMounts:   vms,
 		LivenessProbe:  &healthCheck,
 		ReadinessProbe: &healthCheck,
+		Resources: corev1.ResourceRequirements{
+			Limits: corev1.ResourceList{
+				corev1.ResourceMemory: resource.MustParse(cr.Spec.MemoryLimit),
+				corev1.ResourceCPU:    resource.MustParse(cr.Spec.CpuLimit),
+			},
+			Requests: corev1.ResourceList{
+				corev1.ResourceMemory: resource.MustParse(cr.Spec.MemoryRequest),
+				corev1.ResourceCPU:    resource.MustParse(cr.Spec.CpuLimit),
+			},
+		},
 	}
 	containers = append(containers, kfk)
 
@@ -239,5 +249,13 @@ func NewStsForCR(cr *jianzhiuniquev1.Kafka) *appsv1.StatefulSet {
 			VolumeClaimTemplates: pvc,
 		},
 		Status: appsv1.StatefulSetStatus{},
+	}
+}
+
+func getNumThreads(size int32) string {
+	if size > 3 {
+		return "64"
+	} else {
+		return "32"
 	}
 }

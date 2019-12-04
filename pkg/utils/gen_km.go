@@ -11,7 +11,9 @@ import (
 
 func NewKafkaManagerForCR(cr *jianzhiuniquev1.Kafka) *appsv1.Deployment {
 	zkUrl := cr.Status.ZkUrl
-	cr.Status.KafkaManagerPassword = GetRandomString(16)
+	if cr.Status.KafkaManagerPassword == "" {
+		cr.Status.KafkaManagerPassword = GetRandomString(16)
+	}
 
 	cport := corev1.ContainerPort{ContainerPort: 9000}
 	cports := make([]corev1.ContainerPort, 0)

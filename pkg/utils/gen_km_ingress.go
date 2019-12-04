@@ -9,7 +9,10 @@ import (
 )
 
 func NewKafkaManagerIngressForCR(cr *jianzhiuniquev1.Kafka) *v1beta12.Ingress {
-	cr.Status.KafkaManagerUrl = cr.Name + cr.Spec.KafkaManagerHost
+	if cr.Status.KafkaManagerUrl == "" {
+		cr.Status.KafkaManagerUrl = cr.Name + cr.Spec.KafkaManagerHost
+	}
+
 	paths := make([]v1beta12.HTTPIngressPath, 0)
 	path := v1beta12.HTTPIngressPath{
 		Path: "/",

@@ -16,9 +16,14 @@ type KafkaSpec struct {
 
 	Image string `json:"image,omitempty"`
 	// +kubebuilder:validation:Minimum=3
-	Size        int32  `json:"size,omitempty"`
-	DiskLimit   string `json:"disk_limit,omitempty"`
-	DiskRequest string `json:"disk_request,omitempty"`
+	Size int32 `json:"size,omitempty"`
+	// resource requests and limits
+	DiskLimit     string `json:"disk_limit,omitempty"`
+	DiskRequest   string `json:"disk_request,omitempty"`
+	MemoryRequest string `json:"memory_request,omitempty"`
+	MemoryLimit   string `json:"memory_limit,omitempty"`
+	CpuLimit      string `json:"cpu_limit,omitempty"`
+	CpuRequest    string `json:"cpu_request,omitempty"`
 	// we suggest to use local pv, so the storage class name must be set
 	StorageClassName string `json:"storage_class_name"`
 	// specify the hostname suffix for kafka manager,
