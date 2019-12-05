@@ -40,7 +40,7 @@ func CheckCR(cr *jianzhiuniquev1.Kafka) bool {
 	}
 
 	if cr.Spec.MemoryLimit == "" {
-		cr.Spec.DiskLimit = "32Gi"
+		cr.Spec.MemoryLimit = "32Gi"
 		changed = true
 	}
 
