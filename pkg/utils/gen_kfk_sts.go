@@ -91,7 +91,7 @@ func NewStsForCR(cr *jianzhiuniquev1.Kafka) *appsv1.StatefulSet {
 		},
 		corev1.EnvVar{
 			Name:  "KAFKA_ADVERTISED_LISTENERS",
-			Value: "PLAINTEXT://$(KAFKA_ADVERTISED_HOST_NAME).kafka.$(MY_POD_NAMESPACE).svc.cluster.local:9092",
+			Value: "PLAINTEXT://$(KAFKA_ADVERTISED_HOST_NAME).kfk-svc-" + cr.Name + ".$(MY_POD_NAMESPACE).svc.cluster.local:9092",
 		},
 		corev1.EnvVar{
 			Name:  "KAFKA_LOG_DIRS",
