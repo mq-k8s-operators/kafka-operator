@@ -30,7 +30,7 @@ type KafkaSpec struct {
 	// for example, when ObjectMeta.Name = test and this field is .km.com,
 	// we will generate a ingress whose rule host is test.km.com for kafka manager
 	// then you can bind hosts test.km.com to access it
-	// default value is .km.com
+	// default value is .kfk.cloudmq.com
 	KafkaManagerHost string `json:"kafka_manager_host,omitempty"`
 	// +kubebuilder:validation:Enum=1,3,5,7
 	ZkSize        int32  `json:"zk_size,omitempty"`
