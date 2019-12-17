@@ -4,15 +4,22 @@ metadata:
   name: example-kafka
 spec:
   # Add fields here
+  username: user
   size: 3
   image: wurstmeister/kafka:2.11-0.11.0.3
-  disk_limit: 10Gi
+  disk_limit: 500Gi
   disk_request: 1Gi
+  memory_request: 1Gi
+  memory_limit: 32Gi
+  cpu_limit: 2000m
+  cpu_request: 500m
   storage_class_name: standard
-  kafka_manager_host: ".km.com"
+  kafka_manager_host: ".kfk.cloudmq.com"
   zk_size: 3
-  zk_disk_limit: 10Gi
+  zk_disk_limit: 500Gi
   zk_disk_request: 1Gi
+  kafka_jvm_xms: 6
+  kafka_jvm_xmx: 6
   default_partitions: 3
   log_hours: 168
   log_bytes: -1
