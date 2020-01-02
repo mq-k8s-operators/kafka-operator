@@ -168,6 +168,7 @@ func (r *ReconcileKafka) Reconcile(request reconcile.Request) (reconcile.Result,
 		r.reconcileKafka,
 		r.reconcileKafkaManager,
 		r.reconcileClusterStatus,
+		r.reconcileKafkaProxy,
 	} {
 		if err = fun(instance); err != nil {
 			return reconcile.Result{}, err
@@ -326,6 +327,46 @@ func (r *ReconcileKafka) reconcileKafkaManager(instance *jianzhiuniquev1.Kafka) 
 		}
 	} else if err != nil {
 		return fmt.Errorf("GET kafka manager ingress fail : %s", err)
+	}
+
+	return nil
+}
+
+func (r *ReconcileKafka) reconcileKafkaProxy(instance *jianzhiuniquev1.Kafka) (err error) {
+	//check
+	dep := utils.NewProxyForCR(instance)
+	if err := controllerutil.SetControllerReference(instance, dep, r.scheme); err != nil {
+		return fmt.Errorf("SET proxy Owner fail : %s", err)
+	}
+	found := &appsv1.Deployment{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: dep.Name, Namespace: dep.Namespace}, found)
+
+	if err != nil && errors.IsNotFound(err) {
+		r.log.Info("Creating a new Proxy", "Namespace", dep.Namespace, "Name", dep.Name)
+		err = r.client.Create(context.TODO(), dep)
+		if err != nil {
+			return fmt.Errorf("Create proxy fail : %s", err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("GET proxy fail : %s", err)
+	}
+
+	//check svc
+	svc := utils.NewMqpSvcForCR(instance)
+	if err := controllerutil.SetControllerReference(instance, svc, r.scheme); err != nil {
+		return fmt.Errorf("SET mqp svc Owner fail : %s", err)
+	}
+	foundSvc := &corev1.Service{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: svc.Name, Namespace: svc.Namespace}, foundSvc)
+
+	if err != nil && errors.IsNotFound(err) {
+		r.log.Info("Creating proxy svc", "Namespace", svc.Namespace, "Name", svc.Name)
+		err = r.client.Create(context.TODO(), svc)
+		if err != nil {
+			return fmt.Errorf("Create proxy svc fail : %s", err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("GET proxy svc fail : %s", err)
 	}
 
 	return nil

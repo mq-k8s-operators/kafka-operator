@@ -59,6 +59,13 @@ type KafkaSpec struct {
 	KafkaLogCleanupPolicy string `json:"cleanup_policy,omitempty"`
 	// +kubebuilder:validation:Enum=CreateTime,LogAppendTime
 	KafkaLogMessageTimestampType string `json:"message_timestamp_type,omitempty"`
+	// for proxy
+	ProxyDiskLimit     string `json:"proxy_disk_limit,omitempty"`
+	ProxyDiskRequest   string `json:"proxy_disk_request,omitempty"`
+	ProxyMemoryRequest string `json:"proxy_memory_request,omitempty"`
+	ProxyMemoryLimit   string `json:"proxy_memory_limit,omitempty"`
+	ProxyCpuLimit      string `json:"proxy_cpu_limit,omitempty"`
+	ProxyCpuRequest    string `json:"proxy_cpu_request,omitempty"`
 }
 
 // KafkaStatus defines the observed state of Kafka

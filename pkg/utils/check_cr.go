@@ -139,5 +139,35 @@ func CheckCR(cr *jianzhiuniquev1.Kafka) bool {
 		cr.Spec.KafkaJvmXmx = 1
 	}
 
+	if cr.Spec.ProxyDiskLimit == "" {
+		cr.Spec.ProxyDiskLimit = "10Gi"
+		changed = true
+	}
+
+	if cr.Spec.ProxyDiskRequest == "" {
+		cr.Spec.ProxyDiskRequest = "1Gi"
+		changed = true
+	}
+
+	if cr.Spec.ProxyMemoryLimit == "" {
+		cr.Spec.ProxyMemoryLimit = "2Gi"
+		changed = true
+	}
+
+	if cr.Spec.ProxyMemoryRequest == "" {
+		cr.Spec.ProxyMemoryRequest = "1Gi"
+		changed = true
+	}
+
+	if cr.Spec.ProxyCpuLimit == "" {
+		cr.Spec.ProxyCpuLimit = "2000m"
+		changed = true
+	}
+
+	if cr.Spec.ProxyCpuRequest == "" {
+		cr.Spec.ProxyCpuRequest = "500m"
+		changed = true
+	}
+
 	return changed
 }
