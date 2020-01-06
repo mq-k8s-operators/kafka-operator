@@ -44,24 +44,36 @@ func NewProxyForCR(cr *v1.Kafka) *appsv1.StatefulSet {
 	envs := make([]corev1.EnvVar, 0)
 	envs = append(envs,
 		corev1.EnvVar{
-			Name:  "rabbit.address.host",
-			Value: "kfk-svc-" + cr.Name,
+			Name:  "kafka.producer.bootstrap.servers",
+			Value: "kfk-svc-" + cr.Name + ":9092",
 		},
 		corev1.EnvVar{
-			Name:  "rabbit.address.port",
-			Value: "5672",
+			Name:  "kafka.consumer.bootstrap.servers",
+			Value: "kfk-svc-" + cr.Name + ":9092",
+		},
+		corev1.EnvVar{
+			Name:  "zookeeper.config.url",
+			Value: "kfk-zk-" + cr.Name + "-client:2181",
 		},
 		corev1.EnvVar{
 			Name:  "proxy.config.rabbitmq",
-			Value: "true",
+			Value: "false",
 		},
 		corev1.EnvVar{
 			Name:  "proxy.config.kafka",
-			Value: "false",
+			Value: "true",
 		},
 		corev1.EnvVar{
 			Name:  "logging.path",
 			Value: "/data/mqp",
+		},
+		corev1.EnvVar{
+			Name:  "localdb.config.path",
+			Value: "/data/mqp",
+		},
+		corev1.EnvVar{
+			Name:  "logging.level.ROOT",
+			Value: "WARN",
 		},
 	)
 	vms := make([]corev1.VolumeMount, 0)
