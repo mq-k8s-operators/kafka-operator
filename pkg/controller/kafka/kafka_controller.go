@@ -255,6 +255,16 @@ func (r *ReconcileKafka) reconcileKafka(instance *jianzhiuniquev1.Kafka) (err er
 	}
 
 	//检查kfk是否可用
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace}, found)
+	if err != nil {
+		return fmt.Errorf("CHECK kafka Status Fail : %s", err)
+	}
+	if found.Status.ReadyReplicas != found.Status.Replicas {
+		r.log.Info("kafka Not Ready", "Namespace", sts.Namespace, "Name", sts.Name)
+		return fmt.Errorf("kafka Not Ready")
+	}
+	r.log.Info("kafka Ready", "Namespace", sts.Namespace, "Name", sts.Name, "found", found)
+
 	//创建kafka service
 	svc := utils.NewSvcForCR(instance)
 	if err := controllerutil.SetControllerReference(instance, svc, r.scheme); err != nil {
