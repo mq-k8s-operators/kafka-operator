@@ -76,7 +76,10 @@ type KafkaStatus struct {
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 	ZkUrl                string `json:zk_url`
 	KafkaUrl             string `json:kafka_url`
+	KafkaPort            string `json:kafka_port`
+	KafkaProxyUrl        string `json:kafka_proxy_url`
 	KafkaManagerUrl      string `json:kafka_manager_url`
+	KafkaManagerUsername string `json:kafka_manager_username`
 	KafkaManagerPassword string `json:kafka_manager_password`
 }
 

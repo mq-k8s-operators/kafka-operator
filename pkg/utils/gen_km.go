@@ -14,6 +14,7 @@ func NewKafkaManagerForCR(cr *jianzhiuniquev1.Kafka) *appsv1.Deployment {
 	if cr.Status.KafkaManagerPassword == "" {
 		cr.Status.KafkaManagerPassword = GetRandomString(16)
 	}
+	cr.Status.KafkaManagerUsername = "admin"
 
 	cport := corev1.ContainerPort{ContainerPort: 9000}
 	cports := make([]corev1.ContainerPort, 0)
@@ -31,7 +32,7 @@ func NewKafkaManagerForCR(cr *jianzhiuniquev1.Kafka) *appsv1.Deployment {
 		},
 		corev1.EnvVar{
 			Name:  "KAFKA_MANAGER_USERNAME",
-			Value: "admin",
+			Value: cr.Status.KafkaManagerUsername,
 		},
 		corev1.EnvVar{
 			Name:  "KAFKA_MANAGER_PASSWORD",
