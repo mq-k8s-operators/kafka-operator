@@ -167,8 +167,8 @@ func (r *ReconcileKafka) Reconcile(request reconcile.Request) (reconcile.Result,
 		r.reconcileZooKeeper,
 		r.reconcileKafka,
 		r.reconcileKafkaManager,
-		r.reconcileClusterStatus,
 		r.reconcileKafkaProxy,
+		r.reconcileClusterStatus,
 	} {
 		if err = fun(instance); err != nil {
 			return reconcile.Result{}, err
