@@ -9,6 +9,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1beta12 "k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -164,18 +165,120 @@ func (r *ReconcileKafka) Reconcile(request reconcile.Request) (reconcile.Result,
 
 	// reconcile
 	for _, fun := range []reconcileFun{
+		r.reconcileFinalizers,
 		r.reconcileZooKeeper,
 		r.reconcileKafka,
 		r.reconcileKafkaManager,
 		r.reconcileKafkaProxy,
-		r.reconcileClusterStatus,
 	} {
 		if err = fun(instance); err != nil {
+			r.log.Info("reconcileClusterStatus with error")
+			r.reconcileClusterStatus(instance)
 			return reconcile.Result{}, err
+		} else {
+			r.log.Info("reconcileClusterStatus without error")
+			r.reconcileClusterStatus(instance)
 		}
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func (r *ReconcileKafka) reconcileFinalizers(instance *jianzhiuniquev1.Kafka) (err error) {
+	r.log.Info("instance.DeletionTimestamp is ", instance.DeletionTimestamp)
+	// instance is not deleted
+	if instance.DeletionTimestamp.IsZero() {
+		if !utils.ContainsString(instance.ObjectMeta.Finalizers, utils.KafkaFinalizer) {
+			instance.ObjectMeta.Finalizers = append(instance.ObjectMeta.Finalizers, utils.KafkaFinalizer)
+			if err = r.client.Update(context.TODO(), instance); err != nil {
+				return err
+			}
+		}
+		return r.cleanupOrphanPVCs(instance)
+	} else {
+		// instance is deleted
+		if utils.ContainsString(instance.ObjectMeta.Finalizers, utils.KafkaFinalizer) {
+			if err = r.cleanUpAllPVCs(instance); err != nil {
+				return err
+			}
+			instance.ObjectMeta.Finalizers = utils.RemoveString(instance.ObjectMeta.Finalizers, utils.KafkaFinalizer)
+			if err = r.client.Update(context.TODO(), instance); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (r *ReconcileKafka) getPVCCount(instance *jianzhiuniquev1.Kafka) (pvcCount int, err error) {
+	pvcList, err := r.getPVCList(instance)
+	if err != nil {
+		return -1, err
+	}
+	pvcCount = len(pvcList.Items)
+	return pvcCount, nil
+}
+
+func (r *ReconcileKafka) cleanupOrphanPVCs(instance *jianzhiuniquev1.Kafka) (err error) {
+	// this check should make sure we do not delete the PVCs before the STS has scaled down
+	if instance.Status.Replicas == instance.Spec.Size {
+		pvcCount, err := r.getPVCCount(instance)
+		if err != nil {
+			return err
+		}
+		r.log.Info("cleanupOrphanPVCs", "PVC Count", pvcCount, "ReadyReplicas Count", instance.Status.Replicas)
+		if pvcCount > int(instance.Spec.Size) {
+			pvcList, err := r.getPVCList(instance)
+			if err != nil {
+				return err
+			}
+			for _, pvcItem := range pvcList.Items {
+				// delete only Orphan PVCs
+				if utils.IsPVCOrphan(pvcItem.Name, instance.Spec.Size) {
+					r.deletePVC(pvcItem)
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (r *ReconcileKafka) getPVCList(instance *jianzhiuniquev1.Kafka) (pvList corev1.PersistentVolumeClaimList, err error) {
+	selector, err := metav1.LabelSelectorAsSelector(&metav1.LabelSelector{
+		MatchLabels: map[string]string{"app": "kfk-pod-" + instance.Name},
+	})
+	pvclistOps := &client.ListOptions{
+		Namespace:     instance.Namespace,
+		LabelSelector: selector,
+	}
+	pvcList := &corev1.PersistentVolumeClaimList{}
+	err = r.client.List(context.TODO(), pvcList, pvclistOps)
+	return *pvcList, err
+}
+
+func (r *ReconcileKafka) cleanUpAllPVCs(instance *jianzhiuniquev1.Kafka) (err error) {
+	pvcList, err := r.getPVCList(instance)
+	if err != nil {
+		return err
+	}
+	for _, pvcItem := range pvcList.Items {
+		r.deletePVC(pvcItem)
+	}
+	return nil
+}
+
+func (r *ReconcileKafka) deletePVC(pvcItem corev1.PersistentVolumeClaim) {
+	pvcDelete := &corev1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      pvcItem.Name,
+			Namespace: pvcItem.Namespace,
+		},
+	}
+	r.log.Info("Deleting PVC", "With Name", pvcItem.Name)
+	err := r.client.Delete(context.TODO(), pvcDelete)
+	if err != nil {
+		r.log.Error(err, "Error deleteing PVC.", "Name", pvcDelete.Name)
+	}
 }
 
 func (r *ReconcileKafka) reconcileZooKeeper(instance *jianzhiuniquev1.Kafka) (err error) {
@@ -218,10 +321,11 @@ func (r *ReconcileKafka) reconcileZooKeeper(instance *jianzhiuniquev1.Kafka) (er
 		return fmt.Errorf("CHECK ZK Status Fail : %s", err)
 	}
 	if foundzk.Status.ReadyReplicas != zk.Spec.Replicas {
+		instance.Status.Progress = float32(foundzk.Status.ReadyReplicas) / float32(zk.Spec.Replicas) * 0.3
 		r.log.Info("Zk Not Ready", "Namespace", zk.Namespace, "Name", zk.Name)
 		return fmt.Errorf("Zk Not Ready")
 	}
-	r.log.Info("Zk Ready", "Namespace", zk.Namespace, "Name", zk.Name, "found", foundzk)
+	r.log.Info("Zk Ready", "Namespace", zk.Namespace, "Name", zk.Name)
 
 	return nil
 }
@@ -259,11 +363,14 @@ func (r *ReconcileKafka) reconcileKafka(instance *jianzhiuniquev1.Kafka) (err er
 	if err != nil {
 		return fmt.Errorf("CHECK kafka Status Fail : %s", err)
 	}
-	if found.Status.ReadyReplicas != found.Status.Replicas {
+	if found.Status.ReadyReplicas != instance.Spec.Size {
 		r.log.Info("kafka Not Ready", "Namespace", sts.Namespace, "Name", sts.Name)
+		instance.Status.Progress = float32(found.Status.ReadyReplicas)/float32(found.Status.Replicas)*0.3 + 0.3
 		return fmt.Errorf("kafka Not Ready")
 	}
-	r.log.Info("kafka Ready", "Namespace", sts.Namespace, "Name", sts.Name, "found", found)
+	r.log.Info("kafka Ready", "Namespace", sts.Namespace, "Name", sts.Name)
+	//update KafkaReplicas when kafka is ready
+	instance.Status.Replicas = instance.Spec.Size
 
 	//创建kafka service
 	svc := utils.NewSvcForCR(instance)
@@ -339,6 +446,8 @@ func (r *ReconcileKafka) reconcileKafkaManager(instance *jianzhiuniquev1.Kafka) 
 		return fmt.Errorf("GET kafka manager ingress fail : %s", err)
 	}
 
+	instance.Status.Progress = 0.8
+
 	return nil
 }
 
@@ -378,6 +487,8 @@ func (r *ReconcileKafka) reconcileKafkaProxy(instance *jianzhiuniquev1.Kafka) (e
 	} else if err != nil {
 		return fmt.Errorf("GET proxy svc fail : %s", err)
 	}
+
+	instance.Status.Progress = 1.0
 
 	return nil
 }

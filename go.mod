@@ -4,11 +4,15 @@ go 1.13
 
 require (
 	github.com/gin-gonic/gin v1.5.0
+	github.com/go-logfmt/logfmt v0.4.0 // indirect
 	github.com/go-logr/logr v0.1.0
 	github.com/go-openapi/spec v0.19.0
+	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/operator-framework/operator-sdk v0.12.0
 	github.com/pravega/zookeeper-operator v0.0.0-20191010215457-62ee0e3c053e
 	github.com/spf13/pflag v1.0.3
+	google.golang.org/genproto v0.0.0-20181016170114-94acd270e44e // indirect
+	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 	k8s.io/api v0.0.0
 	k8s.io/apimachinery v0.0.0
 	k8s.io/client-go v11.0.0+incompatible

@@ -74,13 +74,15 @@ type KafkaStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "operator-sdk generate k8s" to regenerate code after modifying this file
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
-	ZkUrl                string `json:zk_url`
-	KafkaUrl             string `json:kafka_url`
-	KafkaPort            string `json:kafka_port`
-	KafkaProxyUrl        string `json:kafka_proxy_url`
-	KafkaManagerUrl      string `json:kafka_manager_url`
-	KafkaManagerUsername string `json:kafka_manager_username`
-	KafkaManagerPassword string `json:kafka_manager_password`
+	ZkUrl                string  `json:zk_url`
+	KafkaUrl             string  `json:kafka_url`
+	KafkaPort            string  `json:kafka_port`
+	KafkaProxyUrl        string  `json:kafka_proxy_url`
+	KafkaManagerUrl      string  `json:kafka_manager_url`
+	KafkaManagerUsername string  `json:kafka_manager_username`
+	KafkaManagerPassword string  `json:kafka_manager_password`
+	Progress             float32 `json:progress`
+	Replicas             int32   `json:kafka_replicas`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
