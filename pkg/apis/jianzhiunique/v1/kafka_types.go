@@ -15,8 +15,12 @@ type KafkaSpec struct {
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 
 	//optional: for mark user who register this cluster
-	Username string `json:"username,omitempty"`
-	Image    string `json:"image,omitempty"`
+	Username     string `json:"username,omitempty"`
+	Image        string `json:"image,omitempty"`
+	ManagerImage string `json:"manager_image,omitempty"`
+	ZkImage      string `json:"zk_image,omitempty"`
+	ZkVersion    string `json:"zk_version,omitempty"`
+	ProxyImage   string `json:"proxy_image,omitempty"`
 	// +kubebuilder:validation:Minimum=3
 	Size int32 `json:"size,omitempty"`
 	// resource requests and limits

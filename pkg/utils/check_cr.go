@@ -29,6 +29,26 @@ func CheckCR(cr *jianzhiuniquev1.Kafka) bool {
 		changed = true
 	}
 
+	if cr.Spec.ZkImage == "" {
+		cr.Spec.ZkImage = "pravega/zookeeper"
+		changed = true
+	}
+
+	if cr.Spec.ZkVersion == "" {
+		cr.Spec.ZkVersion = "0.2.4"
+		changed = true
+	}
+
+	if cr.Spec.ManagerImage == "" {
+		cr.Spec.ManagerImage = "kafkamanager/kafka-manager:latest"
+		changed = true
+	}
+
+	if cr.Spec.ProxyImage == "" {
+		cr.Spec.ProxyImage = "jianzhiunique/mqproxy:latest"
+		changed = true
+	}
+
 	if cr.Spec.DiskLimit == "" {
 		cr.Spec.DiskLimit = "500Gi"
 		changed = true

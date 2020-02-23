@@ -106,7 +106,7 @@ func NewProxyForCR(cr *v1.Kafka) *appsv1.Deployment {
 	}
 	c := corev1.Container{
 		Name:           "kfk-mqp",
-		Image:          "jianzhiunique/mqproxy:latest",
+		Image:          cr.Spec.ProxyImage,
 		Ports:          ports,
 		Env:            envs,
 		VolumeMounts:   vms,

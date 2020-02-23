@@ -43,7 +43,7 @@ func NewKafkaManagerForCR(cr *jianzhiuniquev1.Kafka) *appsv1.Deployment {
 	containers := make([]corev1.Container, 0)
 	container := corev1.Container{
 		Name:  "kfk-m-c-" + cr.Name,
-		Image: "kafkamanager/kafka-manager:latest",
+		Image: cr.Spec.ManagerImage,
 		Ports: cports,
 		Env:   envs,
 	}

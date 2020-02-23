@@ -22,8 +22,8 @@ func NewZkForCR(cr *jianzhiuniquev1.Kafka) *v1beta1.ZookeeperCluster {
 		},
 		Spec: v1beta1.ZookeeperClusterSpec{
 			Image: v1beta1.ContainerImage{
-				Repository: "pravega/zookeeper",
-				Tag:        "0.2.4",
+				Repository: cr.Spec.ZkImage,
+				Tag:        cr.Spec.ZkVersion,
 			},
 			Replicas: cr.Spec.ZkSize,
 			Persistence: &v1beta1.Persistence{
