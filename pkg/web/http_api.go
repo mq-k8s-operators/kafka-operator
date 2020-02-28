@@ -27,7 +27,7 @@ type KafkaStruct struct {
 	KafkaDefaultReplicationFactor    int32  `json:"replication_factor,omitempty" form:"replication_factor"`
 	KafkaMessageMaxBytes             int64  `json:"message_max_bytes,omitempty" form:"message_max_bytes"`
 	KafkaCompressionType             string `json:"compression_type,omitempty" form:"compression_type"`
-	KafkaUncleanLeaderElectionEnable bool   `json:"unclean_election,omitempty" form:"unclean_election"`
+	KafkaUncleanLeaderElectionEnable string   `json:"unclean_election,omitempty" form:"unclean_election"`
 	KafkaLogCleanupPolicy            string `json:"cleanup_policy,omitempty" form:"cleanup_policy"`
 	KafkaLogMessageTimestampType     string `json:"message_timestamp_type,omitempty" form:"message_timestamp_type"`
 }

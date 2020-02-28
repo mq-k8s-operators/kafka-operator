@@ -141,6 +141,11 @@ func CheckCR(cr *jianzhiuniquev1.Kafka) bool {
 		changed = true
 	}
 
+	if cr.Spec.KafkaUncleanLeaderElectionEnable == "" {
+		cr.Spec.KafkaUncleanLeaderElectionEnable = "false"
+		changed = true
+	}
+
 	if cr.Spec.KafkaLogCleanupPolicy == "" {
 		cr.Spec.KafkaLogCleanupPolicy = "delete"
 		changed = true

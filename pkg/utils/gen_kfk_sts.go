@@ -139,7 +139,7 @@ func NewStsForCR(cr *jianzhiuniquev1.Kafka) *appsv1.StatefulSet {
 		},
 		corev1.EnvVar{
 			Name:  "KAFKA_UNCLEAN_LEADER_ELECTION_ENABLE",
-			Value: strconv.FormatBool(cr.Spec.KafkaUncleanLeaderElectionEnable),
+			Value: cr.Spec.KafkaUncleanLeaderElectionEnable,
 		},
 		corev1.EnvVar{
 			Name:  "KAFKA_LOG_CLEANUP_POLICY",

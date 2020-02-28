@@ -58,7 +58,7 @@ type KafkaSpec struct {
 	KafkaMessageMaxBytes          int64 `json:"message_max_bytes,omitempty"`
 	// +kubebuilder:validation:Enum=gzip,snappy,lz4,uncompressed,producer
 	KafkaCompressionType             string `json:"compression_type,omitempty"`
-	KafkaUncleanLeaderElectionEnable bool   `json:"unclean_election,omitempty"`
+	KafkaUncleanLeaderElectionEnable string   `json:"unclean_election,omitempty"`
 	// +kubebuilder:validation:Enum=delete,compact
 	KafkaLogCleanupPolicy string `json:"cleanup_policy,omitempty"`
 	// +kubebuilder:validation:Enum=CreateTime,LogAppendTime
