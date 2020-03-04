@@ -64,4 +64,3 @@ kubectl apply -f deploy/crds/jianzhiunique.github.io_kafkas_crd.yaml
  # Others
  
  - http://kafka.apache.org/documentation/
- - https://github.com/rabbitmq/rabbitmq-peer-discovery-k8s

@@ -80,7 +80,7 @@ func CheckCR(cr *jianzhiuniquev1.Kafka) bool {
 	}
 
 	if cr.Spec.KafkaManagerHost == "" {
-		cr.Spec.KafkaManagerHost = ".kfk.cloudmq.com"
+		cr.Spec.KafkaManagerHost = "kfk.cloudmq.com"
 		changed = true
 	}
 
