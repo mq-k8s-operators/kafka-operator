@@ -40,6 +40,18 @@ func NewZkForCR(cr *jianzhiuniquev1.Kafka) *v1beta1.ZookeeperCluster {
 					StorageClassName: &cr.Spec.StorageClassName,
 				},
 			},
+			Pod: v1beta1.PodPolicy{
+				Resources: corev1.ResourceRequirements{
+					Limits: corev1.ResourceList{
+						corev1.ResourceMemory: resource.MustParse(cr.Spec.ZkMemoryLimit),
+						corev1.ResourceCPU:    resource.MustParse(cr.Spec.ZkCpuLimit),
+					},
+					Requests: corev1.ResourceList{
+						corev1.ResourceMemory: resource.MustParse(cr.Spec.ZkMemoryRequest),
+						corev1.ResourceCPU:    resource.MustParse(cr.Spec.ZkCpuRequest),
+					},
+				},
+			},
 		},
 	}
 }

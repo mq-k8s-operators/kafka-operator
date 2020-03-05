@@ -39,9 +39,13 @@ type KafkaSpec struct {
 	// default value is .kfk.cloudmq.com
 	KafkaManagerHost string `json:"kafka_manager_host,omitempty"`
 	// +kubebuilder:validation:Enum=1,3,5,7
-	ZkSize        int32  `json:"zk_size,omitempty"`
-	ZkDiskLimit   string `json:"zk_disk_limit,omitempty"`
-	ZkDiskRequest string `json:"zk_disk_request,omitempty"`
+	ZkSize          int32  `json:"zk_size,omitempty"`
+	ZkDiskLimit     string `json:"zk_disk_limit,omitempty"`
+	ZkDiskRequest   string `json:"zk_disk_request,omitempty"`
+	ZkMemoryLimit   string `json:"zk_memory_limit,omitempty"`
+	ZkMemoryRequest string `json:"zk_memory_request,omitempty"`
+	ZkCpuLimit      string `json:"zk_cpu_limit,omitempty"`
+	ZkCpuRequest    string `json:"zk_cpu_request,omitempty"`
 
 	//kafka jvm
 	// +kubebuilder:validation:Minimum=1
@@ -58,7 +62,7 @@ type KafkaSpec struct {
 	KafkaMessageMaxBytes          int64 `json:"message_max_bytes,omitempty"`
 	// +kubebuilder:validation:Enum=gzip,snappy,lz4,uncompressed,producer
 	KafkaCompressionType             string `json:"compression_type,omitempty"`
-	KafkaUncleanLeaderElectionEnable string   `json:"unclean_election,omitempty"`
+	KafkaUncleanLeaderElectionEnable string `json:"unclean_election,omitempty"`
 	// +kubebuilder:validation:Enum=delete,compact
 	KafkaLogCleanupPolicy string `json:"cleanup_policy,omitempty"`
 	// +kubebuilder:validation:Enum=CreateTime,LogAppendTime
@@ -70,6 +74,11 @@ type KafkaSpec struct {
 	ProxyMemoryLimit   string `json:"proxy_memory_limit,omitempty"`
 	ProxyCpuLimit      string `json:"proxy_cpu_limit,omitempty"`
 	ProxyCpuRequest    string `json:"proxy_cpu_request,omitempty"`
+	// kafka manager
+	KafkaManagerMemoryRequest string `json:"kafka_manager_memory_request,omitempty"`
+	KafkaManagerMemoryLimit   string `json:"kafka_manager_memory_limit,omitempty"`
+	KafkaManagerCpuLimit      string `json:"kafka_manager_cpu_limit,omitempty"`
+	KafkaManagerCpuRequest    string `json:"kafka_manager_cpu_request,omitempty"`
 }
 
 // KafkaStatus defines the observed state of Kafka

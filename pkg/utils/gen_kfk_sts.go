@@ -217,7 +217,7 @@ func NewStsForCR(cr *jianzhiuniquev1.Kafka) *appsv1.StatefulSet {
 			},
 			Requests: corev1.ResourceList{
 				corev1.ResourceMemory: resource.MustParse(cr.Spec.MemoryRequest),
-				corev1.ResourceCPU:    resource.MustParse(cr.Spec.CpuLimit),
+				corev1.ResourceCPU:    resource.MustParse(cr.Spec.CpuRequest),
 			},
 		},
 	}
@@ -245,7 +245,8 @@ func NewStsForCR(cr *jianzhiuniquev1.Kafka) *appsv1.StatefulSet {
 					},
 				},
 				Spec: corev1.PodSpec{
-					Containers: containers,
+					Containers:         containers,
+					ServiceAccountName: "kafka-operator",
 				},
 			},
 			VolumeClaimTemplates: pvc,

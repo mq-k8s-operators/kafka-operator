@@ -146,8 +146,9 @@ func NewProxyForCR(cr *v1.Kafka) *appsv1.Deployment {
 					},
 				},
 				Spec: corev1.PodSpec{
-					Containers: containers,
-					Volumes:    pv,
+					Containers:         containers,
+					Volumes:            pv,
+					ServiceAccountName: "kafka-operator",
 				},
 			},
 			Strategy:                appsv1.DeploymentStrategy{},

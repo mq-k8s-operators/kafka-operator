@@ -4,6 +4,7 @@ import (
 	jianzhiuniquev1 "github.com/jianzhiunique/kafka-operator/pkg/apis/jianzhiunique/v1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"math/rand"
 	"time"
@@ -46,6 +47,16 @@ func NewKafkaManagerForCR(cr *jianzhiuniquev1.Kafka) *appsv1.Deployment {
 		Image: cr.Spec.ManagerImage,
 		Ports: cports,
 		Env:   envs,
+		Resources: corev1.ResourceRequirements{
+			Limits: corev1.ResourceList{
+				corev1.ResourceMemory: resource.MustParse(cr.Spec.KafkaManagerMemoryLimit),
+				corev1.ResourceCPU:    resource.MustParse(cr.Spec.KafkaManagerCpuLimit),
+			},
+			Requests: corev1.ResourceList{
+				corev1.ResourceMemory: resource.MustParse(cr.Spec.KafkaManagerMemoryRequest),
+				corev1.ResourceCPU:    resource.MustParse(cr.Spec.KafkaManagerCpuRequest),
+			},
+		},
 	}
 	containers = append(containers, container)
 
@@ -78,7 +89,8 @@ func NewKafkaManagerForCR(cr *jianzhiuniquev1.Kafka) *appsv1.Deployment {
 					},
 				},
 				Spec: corev1.PodSpec{
-					Containers: containers,
+					Containers:         containers,
+					ServiceAccountName: "kafka-operator",
 				},
 			},
 		},

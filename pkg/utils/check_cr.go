@@ -194,5 +194,45 @@ func CheckCR(cr *jianzhiuniquev1.Kafka) bool {
 		changed = true
 	}
 
+	if cr.Spec.ZkMemoryLimit == "" {
+		cr.Spec.ZkMemoryLimit = "2Gi"
+		changed = true
+	}
+
+	if cr.Spec.ZkMemoryRequest == "" {
+		cr.Spec.ZkMemoryRequest = "1Gi"
+		changed = true
+	}
+
+	if cr.Spec.ZkCpuLimit == "" {
+		cr.Spec.ZkCpuLimit = "2000m"
+		changed = true
+	}
+
+	if cr.Spec.ZkCpuRequest == "" {
+		cr.Spec.ZkCpuRequest = "500m"
+		changed = true
+	}
+
+	if cr.Spec.KafkaManagerMemoryLimit == "" {
+		cr.Spec.KafkaManagerMemoryLimit = "2Gi"
+		changed = true
+	}
+
+	if cr.Spec.KafkaManagerMemoryRequest == "" {
+		cr.Spec.KafkaManagerMemoryRequest = "1Gi"
+		changed = true
+	}
+
+	if cr.Spec.KafkaManagerCpuLimit == "" {
+		cr.Spec.KafkaManagerCpuLimit = "2000m"
+		changed = true
+	}
+
+	if cr.Spec.KafkaManagerCpuRequest == "" {
+		cr.Spec.KafkaManagerCpuRequest = "500m"
+		changed = true
+	}
+
 	return changed
 }
