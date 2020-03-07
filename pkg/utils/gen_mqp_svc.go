@@ -13,7 +13,6 @@ func NewMqpSvcForCR(cr *v1.Kafka) *corev1.Service {
 	port := corev1.ServicePort{Port: 8080, Name: "mqp"}
 	ports := make([]corev1.ServicePort, 0)
 	ports = append(ports, port)
-	cr.Status.KafkaProxyUrl = "kfk-mqp-svc-" + cr.Name + ":8080"
 
 	return &corev1.Service{
 		TypeMeta: metav1.TypeMeta{

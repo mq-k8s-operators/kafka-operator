@@ -10,8 +10,7 @@ func NewSvcForCR(cr *jianzhiuniquev1.Kafka) *corev1.Service {
 	port := corev1.ServicePort{Port: 9092}
 	ports := make([]corev1.ServicePort, 0)
 	ports = append(ports, port)
-	cr.Status.KafkaUrl = "kfk-svc-" + cr.Name
-	cr.Status.KafkaPort = "9092"
+
 	return &corev1.Service{
 		TypeMeta: metav1.TypeMeta{
 			APIVersion: "v1",

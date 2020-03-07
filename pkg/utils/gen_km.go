@@ -6,16 +6,10 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"math/rand"
-	"time"
 )
 
 func NewKafkaManagerForCR(cr *jianzhiuniquev1.Kafka) *appsv1.Deployment {
 	zkUrl := cr.Status.ZkUrl
-	if cr.Status.KafkaManagerPassword == "" {
-		cr.Status.KafkaManagerPassword = GetRandomString(16)
-	}
-	cr.Status.KafkaManagerUsername = "admin"
 
 	cport := corev1.ContainerPort{ContainerPort: 9000}
 	cports := make([]corev1.ContainerPort, 0)
@@ -38,6 +32,10 @@ func NewKafkaManagerForCR(cr *jianzhiuniquev1.Kafka) *appsv1.Deployment {
 		corev1.EnvVar{
 			Name:  "KAFKA_MANAGER_PASSWORD",
 			Value: cr.Status.KafkaManagerPassword,
+		},
+		corev1.EnvVar{
+			Name:  "KAFKA_MANAGER_PATH",
+			Value: cr.Status.KafkaManagerPath,
 		},
 	)
 
@@ -95,15 +93,4 @@ func NewKafkaManagerForCR(cr *jianzhiuniquev1.Kafka) *appsv1.Deployment {
 			},
 		},
 	}
-}
-
-func GetRandomString(l int) string {
-	str := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	bytes := []byte(str)
-	result := []byte{}
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	for i := 0; i < l; i++ {
-		result = append(result, bytes[r.Intn(len(bytes))])
-	}
-	return string(result)
 }

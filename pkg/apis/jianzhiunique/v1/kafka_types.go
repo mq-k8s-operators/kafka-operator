@@ -37,7 +37,8 @@ type KafkaSpec struct {
 	// we will generate a ingress whose rule host is test.km.com for kafka manager
 	// then you can bind hosts test.km.com to access it
 	// default value is .kfk.cloudmq.com
-	KafkaManagerHost string `json:"kafka_manager_host,omitempty"`
+	KafkaManagerHost      string `json:"kafka_manager_host,omitempty"`
+	KafkaManagerHostAlias string `json:"kafka_manager_host_alias,omitempty"`
 	// +kubebuilder:validation:Enum=1,3,5,7
 	ZkSize          int32  `json:"zk_size,omitempty"`
 	ZkDiskLimit     string `json:"zk_disk_limit,omitempty"`
@@ -91,6 +92,7 @@ type KafkaStatus struct {
 	KafkaUrl             string  `json:kafka_url`
 	KafkaPort            string  `json:kafka_port`
 	KafkaProxyUrl        string  `json:kafka_proxy_url`
+	KafkaManagerPath     string  `json:kafka_manager_path`
 	KafkaManagerUrl      string  `json:kafka_manager_url`
 	KafkaManagerUsername string  `json:kafka_manager_username`
 	KafkaManagerPassword string  `json:kafka_manager_password`

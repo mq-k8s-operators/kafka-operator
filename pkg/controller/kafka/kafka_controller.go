@@ -12,6 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"math/rand"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -163,6 +164,43 @@ func (r *ReconcileKafka) Reconcile(request reconcile.Request) (reconcile.Result,
 		return reconcile.Result{Requeue: true}, nil
 	}
 
+	if instance.Status.KafkaProxyUrl == "" {
+		instance.Status.KafkaProxyUrl = "kfk-mqp-svc-" + instance.Name + ":8080"
+	}
+
+	if instance.Status.KafkaUrl == "" {
+		instance.Status.KafkaUrl = "kfk-svc-" + instance.Name
+	}
+	if instance.Status.KafkaPort == "" {
+		instance.Status.KafkaPort = "9092"
+	}
+	if instance.Status.KafkaManagerUsername == "" {
+		instance.Status.KafkaManagerUsername = "admin"
+	}
+	if instance.Status.KafkaManagerPath == "" {
+		instance.Status.KafkaManagerPath = "/" + instance.Namespace + "-" + instance.Name + "-kafka/"
+	}
+
+	if instance.Status.KafkaManagerPassword == "" {
+		instance.Status.KafkaManagerPassword = GetRandomString(16)
+	}
+
+	if instance.Status.KafkaManagerUrl == "" {
+		if instance.Spec.KafkaManagerHostAlias == "" {
+			instance.Status.KafkaManagerUrl = instance.Spec.KafkaManagerHost + instance.Status.KafkaManagerPath
+		} else {
+			instance.Status.KafkaManagerUrl = instance.Spec.KafkaManagerHostAlias + instance.Status.KafkaManagerPath
+		}
+	}
+
+	if instance.Status.ZkUrl == "" {
+		instance.Status.ZkUrl = "kfk-zk-" + instance.Name + "-client:2181"
+	}
+
+	if err = r.reconcileClusterStatus(instance); err != nil {
+		return reconcile.Result{}, err
+	}
+
 	// reconcile
 	for _, fun := range []reconcileFun{
 		r.reconcileFinalizers,
@@ -182,6 +220,17 @@ func (r *ReconcileKafka) Reconcile(request reconcile.Request) (reconcile.Result,
 	}
 
 	return reconcile.Result{}, nil
+}
+
+func GetRandomString(l int) string {
+	str := "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	bytes := []byte(str)
+	result := []byte{}
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	for i := 0; i < l; i++ {
+		result = append(result, bytes[r.Intn(len(bytes))])
+	}
+	return string(result)
 }
 
 func (r *ReconcileKafka) reconcileFinalizers(instance *jianzhiuniquev1.Kafka) (err error) {
@@ -442,11 +491,10 @@ func (r *ReconcileKafka) reconcileKafkaManager(instance *jianzhiuniquev1.Kafka) 
 		if err != nil {
 			return fmt.Errorf("Create kafka manager ingress fail : %s", err)
 		}
+		instance.Status.Progress = 0.8
 	} else if err != nil {
 		return fmt.Errorf("GET kafka manager ingress fail : %s", err)
 	}
-
-	instance.Status.Progress = 0.8
 
 	return nil
 }
@@ -484,6 +532,7 @@ func (r *ReconcileKafka) reconcileKafkaProxy(instance *jianzhiuniquev1.Kafka) (e
 		if err != nil {
 			return fmt.Errorf("Create proxy svc fail : %s", err)
 		}
+		instance.Status.Progress = 1.0
 	} else if err != nil {
 		return fmt.Errorf("GET proxy svc fail : %s", err)
 	}
