@@ -245,8 +245,8 @@ func NewStsForCR(cr *jianzhiuniquev1.Kafka) *appsv1.StatefulSet {
 					},
 				},
 				Spec: corev1.PodSpec{
-					Containers:         containers,
-					ServiceAccountName: "kafka-operator",
+					Containers: containers,
+					//ServiceAccountName: "kafka-operator",
 				},
 			},
 			VolumeClaimTemplates: pvc,

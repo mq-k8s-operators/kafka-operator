@@ -21,6 +21,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
+	"strconv"
 	"time"
 
 	_ "github.com/jianzhiunique/kafka-operator/pkg/utils"
@@ -156,7 +157,7 @@ func (r *ReconcileKafka) Reconcile(request reconcile.Request) (reconcile.Result,
 	changed := utils.CheckCR(instance)
 
 	if changed {
-		r.log.Info("Setting default settings for kafka", instance)
+		r.log.Info("Setting default settings for kafka")
 		if err := r.client.Update(context.TODO(), instance); err != nil {
 			return reconcile.Result{}, fmt.Errorf("Setting default fail : %s", err)
 		}
@@ -177,24 +178,53 @@ func (r *ReconcileKafka) Reconcile(request reconcile.Request) (reconcile.Result,
 	if instance.Status.KafkaManagerUsername == "" {
 		instance.Status.KafkaManagerUsername = "admin"
 	}
-	if instance.Status.KafkaManagerPath == "" {
-		instance.Status.KafkaManagerPath = "/" + instance.Namespace + "-" + instance.Name + "-kafka/"
-	}
 
 	if instance.Status.KafkaManagerPassword == "" {
 		instance.Status.KafkaManagerPassword = GetRandomString(16)
 	}
 
+	if instance.Status.KafkaManagerPath == "" {
+		instance.Status.KafkaManagerPath = "/kfk-" + instance.Namespace + "-" + instance.Name + "/"
+	}
+
+	if instance.Status.KafkaToolsPath == "" {
+		instance.Status.KafkaToolsPath = "/" + instance.Namespace + "-" + instance.Name + "-kafka/"
+	}
+
 	if instance.Status.KafkaManagerUrl == "" {
 		if instance.Spec.KafkaManagerHostAlias == "" {
-			instance.Status.KafkaManagerUrl = instance.Spec.KafkaManagerHost + instance.Status.KafkaManagerPath
+			instance.Status.KafkaManagerUrl = instance.Spec.KafkaManagerHost + instance.Status.KafkaToolsPath
 		} else {
-			instance.Status.KafkaManagerUrl = instance.Spec.KafkaManagerHostAlias + instance.Status.KafkaManagerPath
+			instance.Status.KafkaManagerUrl = instance.Spec.KafkaManagerHostAlias + instance.Status.KafkaToolsPath
 		}
 	}
 
 	if instance.Status.ZkUrl == "" {
 		instance.Status.ZkUrl = "kfk-zk-" + instance.Name + "-client:2181"
+	}
+
+	//sts_name.svc_name.namespace.svc.cluster.local
+	var i int32
+	if instance.Status.KafkaUrlAll == "" {
+		for i = 0; i < instance.Spec.Size; i++ {
+			instance.Status.KafkaUrlAll += "kfk-sts-" + instance.Name + "-" + strconv.FormatInt(int64(i), 10) + "."
+			instance.Status.KafkaUrlAll += "kfk-svc-" + instance.Name + "."
+			instance.Status.KafkaUrlAll += instance.Namespace + ".svc.cluster.local:9092"
+			if i != instance.Spec.Size-1 {
+				instance.Status.KafkaUrlAll += ","
+			}
+		}
+	}
+
+	if instance.Status.ZkUrlAll == "" {
+		for i = 0; i < instance.Spec.ZkSize; i++ {
+			instance.Status.ZkUrlAll += "kfk-zk-" + instance.Name + "-" + strconv.FormatInt(int64(i), 10) + "."
+			instance.Status.ZkUrlAll += "kfk-zk-" + instance.Name + "-headless."
+			instance.Status.ZkUrlAll += instance.Namespace + ".svc.cluster.local:2181"
+			if i != instance.Spec.ZkSize-1 {
+				instance.Status.ZkUrlAll += ","
+			}
+		}
 	}
 
 	if err = r.reconcileClusterStatus(instance); err != nil {
@@ -207,6 +237,7 @@ func (r *ReconcileKafka) Reconcile(request reconcile.Request) (reconcile.Result,
 		r.reconcileZooKeeper,
 		r.reconcileKafka,
 		r.reconcileKafkaManager,
+		r.reconcileMQManagementTools,
 		r.reconcileKafkaProxy,
 	} {
 		if err = fun(instance); err != nil {
@@ -491,7 +522,7 @@ func (r *ReconcileKafka) reconcileKafkaManager(instance *jianzhiuniquev1.Kafka) 
 		if err != nil {
 			return fmt.Errorf("Create kafka manager ingress fail : %s", err)
 		}
-		instance.Status.Progress = 0.8
+		instance.Status.Progress = 0.65
 	} else if err != nil {
 		return fmt.Errorf("GET kafka manager ingress fail : %s", err)
 	}
@@ -544,4 +575,65 @@ func (r *ReconcileKafka) reconcileKafkaProxy(instance *jianzhiuniquev1.Kafka) (e
 
 func (r *ReconcileKafka) reconcileClusterStatus(instance *jianzhiuniquev1.Kafka) (err error) {
 	return r.client.Status().Update(context.TODO(), instance)
+}
+
+func (r *ReconcileKafka) reconcileMQManagementTools(instance *jianzhiuniquev1.Kafka) error {
+	//check
+	dep := utils.NewToolsForCR(instance)
+	if err := controllerutil.SetControllerReference(instance, dep, r.scheme); err != nil {
+		return fmt.Errorf("SET proxy Owner fail : %s", err)
+	}
+	found := &appsv1.Deployment{}
+	err := r.client.Get(context.TODO(), types.NamespacedName{Name: dep.Name, Namespace: dep.Namespace}, found)
+
+	if err != nil && errors.IsNotFound(err) {
+		r.log.Info("Creating a new MQManagementTools", "Namespace", dep.Namespace, "Name", dep.Name)
+		err = r.client.Create(context.TODO(), dep)
+		if err != nil {
+			return fmt.Errorf("Create proxy fail : %s", err)
+		}
+		instance.Status.Progress = 0.7
+	} else if err != nil {
+		return fmt.Errorf("GET proxy fail : %s", err)
+	}
+
+	//check svc
+	svc := utils.NewToolsSvcForCR(instance)
+	if err := controllerutil.SetControllerReference(instance, svc, r.scheme); err != nil {
+		return fmt.Errorf("SET Management SVC Owner fail : %s", err)
+	}
+	foundSvc := &corev1.Service{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: svc.Name, Namespace: svc.Namespace}, foundSvc)
+
+	if err != nil && errors.IsNotFound(err) {
+		r.log.Info("Creating a new MQManagementTools svc", "Svc.Namespace", svc.Namespace, "Svc.Name", svc.Name)
+		err = r.client.Create(context.TODO(), svc)
+		if err != nil {
+			return fmt.Errorf("Create headless svc fail : %s", err)
+		}
+		instance.Status.Progress = 0.75
+	} else if err != nil {
+		return fmt.Errorf("GET svc fail : %s", err)
+	}
+
+	//check ingress
+	rmi := utils.NewToolsIngressForCR(instance)
+	if err := controllerutil.SetControllerReference(instance, rmi, r.scheme); err != nil {
+		return fmt.Errorf("SET ingress Owner fail : %s", err)
+	}
+	foundKmi := &v1beta12.Ingress{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: rmi.Name, Namespace: rmi.Namespace}, foundKmi)
+
+	if err != nil && errors.IsNotFound(err) {
+		r.log.Info("Creating a new MQManagementTools ingress", "Namespace", rmi.Namespace, "Name", rmi.Name)
+		err = r.client.Create(context.TODO(), rmi)
+		if err != nil {
+			return fmt.Errorf("Create rabbitmq management ingress fail : %s", err)
+		}
+		instance.Status.Progress = 0.8
+	} else if err != nil {
+		return fmt.Errorf("GET rabbitmq management ingress fail : %s", err)
+	}
+
+	return nil
 }

@@ -39,6 +39,7 @@ type KafkaSpec struct {
 	// default value is .kfk.cloudmq.com
 	KafkaManagerHost      string `json:"kafka_manager_host,omitempty"`
 	KafkaManagerHostAlias string `json:"kafka_manager_host_alias,omitempty"`
+	KafkaManagerBasePath  string `json:"kafka_manager_base_path,omitempty"`
 	// +kubebuilder:validation:Enum=1,3,5,7
 	ZkSize          int32  `json:"zk_size,omitempty"`
 	ZkDiskLimit     string `json:"zk_disk_limit,omitempty"`
@@ -80,6 +81,15 @@ type KafkaSpec struct {
 	KafkaManagerMemoryLimit   string `json:"kafka_manager_memory_limit,omitempty"`
 	KafkaManagerCpuLimit      string `json:"kafka_manager_cpu_limit,omitempty"`
 	KafkaManagerCpuRequest    string `json:"kafka_manager_cpu_request,omitempty"`
+	// for mq management tools
+	ToolsImage         string `json:"tools_image,omitempty"`
+	ToolsAdminDingUrl  string `json:"tools_admin_ding_url,omitempty"`
+	ToolsDiskLimit     string `json:"tools_disk_limit,omitempty"`
+	ToolsDiskRequest   string `json:"tools_disk_request,omitempty"`
+	ToolsMemoryRequest string `json:"tools_memory_request,omitempty"`
+	ToolsMemoryLimit   string `json:"tools_memory_limit,omitempty"`
+	ToolsCpuLimit      string `json:"tools_cpu_limit,omitempty"`
+	ToolsCpuRequest    string `json:"tools_cpu_request,omitempty"`
 }
 
 // KafkaStatus defines the observed state of Kafka
@@ -90,8 +100,11 @@ type KafkaStatus struct {
 	// Add custom validation using kubebuilder tags: https://book-v1.book.kubebuilder.io/beyond_basics/generating_crd.html
 	ZkUrl                string  `json:zk_url`
 	KafkaUrl             string  `json:kafka_url`
+	ZkUrlAll             string  `json:zk_url_all`
+	KafkaUrlAll          string  `json:kafka_url_all`
 	KafkaPort            string  `json:kafka_port`
 	KafkaProxyUrl        string  `json:kafka_proxy_url`
+	KafkaToolsPath       string  `json:kafka_tools_path`
 	KafkaManagerPath     string  `json:kafka_manager_path`
 	KafkaManagerUrl      string  `json:kafka_manager_url`
 	KafkaManagerUsername string  `json:kafka_manager_username`

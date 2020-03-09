@@ -10,6 +10,12 @@ import (
 
 func NewKafkaManagerForCR(cr *jianzhiuniquev1.Kafka) *appsv1.Deployment {
 	zkUrl := cr.Status.ZkUrl
+	var path string
+	if cr.Spec.KafkaManagerBasePath == "" {
+		path = cr.Status.KafkaManagerPath
+	} else {
+		path = cr.Spec.KafkaManagerBasePath + cr.Status.KafkaManagerPath
+	}
 
 	cport := corev1.ContainerPort{ContainerPort: 9000}
 	cports := make([]corev1.ContainerPort, 0)
@@ -35,7 +41,7 @@ func NewKafkaManagerForCR(cr *jianzhiuniquev1.Kafka) *appsv1.Deployment {
 		},
 		corev1.EnvVar{
 			Name:  "KAFKA_MANAGER_PATH",
-			Value: cr.Status.KafkaManagerPath,
+			Value: path,
 		},
 	)
 
@@ -87,8 +93,8 @@ func NewKafkaManagerForCR(cr *jianzhiuniquev1.Kafka) *appsv1.Deployment {
 					},
 				},
 				Spec: corev1.PodSpec{
-					Containers:         containers,
-					ServiceAccountName: "kafka-operator",
+					Containers: containers,
+					//ServiceAccountName: "kafka-operator",
 				},
 			},
 		},
