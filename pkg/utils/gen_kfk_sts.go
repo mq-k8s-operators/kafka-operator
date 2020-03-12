@@ -247,6 +247,24 @@ func NewStsForCR(cr *jianzhiuniquev1.Kafka) *appsv1.StatefulSet {
 				Spec: corev1.PodSpec{
 					Containers: containers,
 					//ServiceAccountName: "kafka-operator",
+					/*
+						Affinity: &corev1.Affinity{
+							NodeAffinity:    &corev1.NodeAffinity{
+								RequiredDuringSchedulingIgnoredDuringExecution:  &corev1.NodeSelector{
+									NodeSelectorTerms: []corev1.NodeSelectorTerm{
+										{
+											MatchExpressions: []corev1.NodeSelectorRequirement{
+												{
+													Key: "nodegroup/kafka",
+													Operator: corev1.NodeSelectorOpExists,
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					*/
 				},
 			},
 			VolumeClaimTemplates: pvc,

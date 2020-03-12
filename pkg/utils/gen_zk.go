@@ -50,6 +50,24 @@ func NewZkForCR(cr *jianzhiuniquev1.Kafka) *v1beta1.ZookeeperCluster {
 						corev1.ResourceCPU:    resource.MustParse(cr.Spec.ZkCpuRequest),
 					},
 				},
+				/*
+					Affinity: &corev1.Affinity{
+						NodeAffinity:    &corev1.NodeAffinity{
+							RequiredDuringSchedulingIgnoredDuringExecution:  &corev1.NodeSelector{
+								NodeSelectorTerms: []corev1.NodeSelectorTerm{
+									{
+										MatchExpressions: []corev1.NodeSelectorRequirement{
+											{
+												Key: "nodegroup/zookeeper",
+												Operator: corev1.NodeSelectorOpExists,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				*/
 			},
 		},
 	}
