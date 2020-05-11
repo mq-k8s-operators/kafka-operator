@@ -3,6 +3,7 @@ package kafka
 import (
 	"context"
 	"fmt"
+	v1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	"github.com/go-logr/logr"
 	jianzhiuniquev1 "github.com/jianzhiunique/kafka-operator/pkg/apis/jianzhiunique/v1"
 	"github.com/jianzhiunique/kafka-operator/pkg/utils"
@@ -239,6 +240,8 @@ func (r *ReconcileKafka) Reconcile(request reconcile.Request) (reconcile.Result,
 		r.reconcileKafkaManager,
 		r.reconcileMQManagementTools,
 		r.reconcileKafkaProxy,
+		r.reconcileKafkaExporter,
+		r.reconcileServiceMonitor,
 	} {
 		if err = fun(instance); err != nil {
 			r.log.Info("reconcileClusterStatus with error")
@@ -569,6 +572,70 @@ func (r *ReconcileKafka) reconcileKafkaProxy(instance *jianzhiuniquev1.Kafka) (e
 	}
 
 	instance.Status.Progress = 1.0
+
+	return nil
+}
+
+func (r *ReconcileKafka) reconcileKafkaExporter(instance *jianzhiuniquev1.Kafka) (err error) {
+	//check
+	dep := utils.NewExporterForCR(instance)
+	if err := controllerutil.SetControllerReference(instance, dep, r.scheme); err != nil {
+		return fmt.Errorf("SET exporter Owner fail : %s", err)
+	}
+	found := &appsv1.Deployment{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: dep.Name, Namespace: dep.Namespace}, found)
+
+	if err != nil && errors.IsNotFound(err) {
+		r.log.Info("Creating a new exporter", "Namespace", dep.Namespace, "Name", dep.Name)
+		err = r.client.Create(context.TODO(), dep)
+		if err != nil {
+			return fmt.Errorf("Create exporter fail : %s", err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("GET exporter fail : %s", err)
+	}
+
+	//check svc
+	svc := utils.NewExporterSvcForCR(instance)
+	if err := controllerutil.SetControllerReference(instance, svc, r.scheme); err != nil {
+		return fmt.Errorf("SET exporter svc Owner fail : %s", err)
+	}
+	foundSvc := &corev1.Service{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: svc.Name, Namespace: svc.Namespace}, foundSvc)
+
+	if err != nil && errors.IsNotFound(err) {
+		r.log.Info("Creating exporter svc", "Namespace", svc.Namespace, "Name", svc.Name)
+		err = r.client.Create(context.TODO(), svc)
+		if err != nil {
+			return fmt.Errorf("Create exporter svc fail : %s", err)
+		}
+		instance.Status.Progress = 1.0
+	} else if err != nil {
+		return fmt.Errorf("GET exporter svc fail : %s", err)
+	}
+	instance.Status.Progress = 1.0
+
+	return nil
+}
+
+func (r *ReconcileKafka) reconcileServiceMonitor(instance *jianzhiuniquev1.Kafka) (err error) {
+	svcm := utils.NewSvcMonitorForCR(instance)
+	if err := controllerutil.SetControllerReference(instance, svcm, r.scheme); err != nil {
+		return fmt.Errorf("SET svcm Owner fail : %s", err)
+	}
+	foundSvcm := &v1.ServiceMonitor{}
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: foundSvcm.Name, Namespace: foundSvcm.Namespace}, foundSvcm)
+
+	if err != nil && errors.IsNotFound(err) {
+		r.log.Info("Creating exporter svc", "Namespace", svcm.Namespace, "Name", svcm.Name)
+		err = r.client.Create(context.TODO(), svcm)
+		if err != nil {
+			return fmt.Errorf("Create svcm fail : %s", err)
+		}
+		instance.Status.Progress = 1.0
+	} else if err != nil {
+		return fmt.Errorf("GET svcm fail : %s", err)
+	}
 
 	return nil
 }

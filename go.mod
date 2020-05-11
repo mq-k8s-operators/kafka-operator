@@ -3,20 +3,22 @@ module github.com/jianzhiunique/kafka-operator
 go 1.13
 
 require (
+	github.com/Azure/go-autorest v11.2.8+incompatible // indirect
+	github.com/aws/aws-sdk-go v1.25.48 // indirect
+	github.com/coreos/prometheus-operator v0.38.1
 	github.com/gin-gonic/gin v1.5.0
-	github.com/go-logfmt/logfmt v0.4.0 // indirect
 	github.com/go-logr/logr v0.1.0
-	github.com/go-openapi/spec v0.19.0
+	github.com/go-openapi/spec v0.19.2
+	github.com/google/pprof v0.0.0-20190723021845-34ac40c74b70 // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1 // indirect
 	github.com/operator-framework/operator-sdk v0.12.0
 	github.com/pravega/zookeeper-operator v0.0.0-20191010215457-62ee0e3c053e
-	github.com/spf13/pflag v1.0.3
-	google.golang.org/genproto v0.0.0-20181016170114-94acd270e44e // indirect
+	github.com/spf13/pflag v1.0.5
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
-	k8s.io/api v0.0.0
-	k8s.io/apimachinery v0.0.0
-	k8s.io/client-go v11.0.0+incompatible
-	k8s.io/kube-openapi v0.0.0-20190918143330-0270cf2f1c1d
+	k8s.io/api v0.17.3
+	k8s.io/apimachinery v0.17.3
+	k8s.io/client-go v12.0.0+incompatible
+	k8s.io/kube-openapi v0.0.0-20191107075043-30be4d16710a
 	sigs.k8s.io/controller-runtime v0.3.0
 )
 

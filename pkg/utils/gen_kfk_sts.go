@@ -241,12 +241,12 @@ func NewStsForCR(cr *jianzhiuniquev1.Kafka) *appsv1.StatefulSet {
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app": "kfk-pod-" + cr.Name,
+						"app":     "kfk-pod-" + cr.Name,
+						"cluster": "kfk-" + cr.Namespace + "-" + cr.Name,
 					},
 				},
 				Spec: corev1.PodSpec{
 					Containers: containers,
-					//ServiceAccountName: "kafka-operator",
 					/*
 						Affinity: &corev1.Affinity{
 							NodeAffinity:    &corev1.NodeAffinity{

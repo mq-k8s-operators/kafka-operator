@@ -89,12 +89,12 @@ func NewKafkaManagerForCR(cr *jianzhiuniquev1.Kafka) *appsv1.Deployment {
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app": "kfk-m-" + cr.Name,
+						"app":     "kfk-m-" + cr.Name,
+						"cluster": "kfk-" + cr.Namespace + "-" + cr.Name,
 					},
 				},
 				Spec: corev1.PodSpec{
 					Containers: containers,
-					//ServiceAccountName: "kafka-operator",
 				},
 			},
 		},

@@ -90,6 +90,16 @@ type KafkaSpec struct {
 	ToolsMemoryLimit   string `json:"tools_memory_limit,omitempty"`
 	ToolsCpuLimit      string `json:"tools_cpu_limit,omitempty"`
 	ToolsCpuRequest    string `json:"tools_cpu_request,omitempty"`
+	// for exporter
+	ExporterImage         string `json:"exporter_image,omitempty"`
+	ExporterDiskLimit     string `json:"exporter_disk_limit,omitempty"`
+	ExporterDiskRequest   string `json:"exporter_disk_request,omitempty"`
+	ExporterMemoryRequest string `json:"exporter_memory_request,omitempty"`
+	ExporterMemoryLimit   string `json:"exporter_memory_limit,omitempty"`
+	ExporterCpuLimit      string `json:"exporter_cpu_limit,omitempty"`
+	ExporterCpuRequest    string `json:"exporter_cpu_request,omitempty"`
+	//for ingress
+	IngressNamespace string `json:"ingress_namespace,omitempty"`
 }
 
 // KafkaStatus defines the observed state of Kafka

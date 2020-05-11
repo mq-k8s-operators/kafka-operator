@@ -282,7 +282,47 @@ func CheckCR(cr *jianzhiuniquev1.Kafka) bool {
 	}
 
 	if cr.Spec.ToolsImage == "" {
-		cr.Spec.ToolsImage = "registry.cn-hangzhou.aliyuncs.com/jianzhiunique/kafka-management:1.0.0"
+		cr.Spec.ToolsImage = "registry.cn-hangzhou.aliyuncs.com/jianzhiunique/kafka-management:latest"
+		changed = true
+	}
+
+	if cr.Spec.ExporterImage == "" {
+		cr.Spec.ExporterImage = "danielqsj/kafka-exporter:latest"
+		changed = true
+	}
+
+	if cr.Spec.ExporterDiskLimit == "" {
+		cr.Spec.ExporterDiskLimit = "10Gi"
+		changed = true
+	}
+
+	if cr.Spec.ExporterDiskRequest == "" {
+		cr.Spec.ExporterDiskRequest = "1Gi"
+		changed = true
+	}
+
+	if cr.Spec.ExporterMemoryLimit == "" {
+		cr.Spec.ExporterMemoryLimit = "2Gi"
+		changed = true
+	}
+
+	if cr.Spec.ExporterMemoryRequest == "" {
+		cr.Spec.ExporterMemoryRequest = "1Gi"
+		changed = true
+	}
+
+	if cr.Spec.ExporterCpuLimit == "" {
+		cr.Spec.ExporterCpuLimit = "2000m"
+		changed = true
+	}
+
+	if cr.Spec.ExporterCpuRequest == "" {
+		cr.Spec.ExporterCpuRequest = "500m"
+		changed = true
+	}
+
+	if cr.Spec.IngressNamespace == "" {
+		cr.Spec.IngressNamespace = "default"
 		changed = true
 	}
 

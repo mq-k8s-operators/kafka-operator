@@ -142,13 +142,13 @@ func NewProxyForCR(cr *v1.Kafka) *appsv1.Deployment {
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app": "kfk-mqp-" + cr.Name,
+						"app":     "kfk-mqp-" + cr.Name,
+						"cluster": "kfk-" + cr.Namespace + "-" + cr.Name,
 					},
 				},
 				Spec: corev1.PodSpec{
 					Containers: containers,
 					Volumes:    pv,
-					//ServiceAccountName: "kafka-operator",
 				},
 			},
 			Strategy:                appsv1.DeploymentStrategy{},
