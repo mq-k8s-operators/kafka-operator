@@ -100,14 +100,15 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}
 
+	//解除对ingress的监听，防止删除共用ingress？但需要考虑删除逻辑
 	// Watch for changes to secondary resource Ingress and requeue the owner Kafka
-	err = c.Watch(&source.Kind{Type: &v1beta12.Ingress{}}, &handler.EnqueueRequestForOwner{
+	/*err = c.Watch(&source.Kind{Type: &v1beta12.Ingress{}}, &handler.EnqueueRequestForOwner{
 		IsController: true,
 		OwnerType:    &jianzhiuniquev1.Kafka{},
 	})
 	if err != nil {
 		return err
-	}
+	}*/
 
 	return nil
 }
@@ -233,6 +234,7 @@ func (r *ReconcileKafka) Reconcile(request reconcile.Request) (reconcile.Result,
 	}
 
 	// reconcile
+	//reconcileKafkaManager与reconcileMQManagementTools有先后顺序
 	for _, fun := range []reconcileFun{
 		r.reconcileFinalizers,
 		r.reconcileZooKeeper,
@@ -512,10 +514,10 @@ func (r *ReconcileKafka) reconcileKafkaManager(instance *jianzhiuniquev1.Kafka) 
 		return fmt.Errorf("GET kafka manager svc fail : %s", err)
 	}
 
-	kmi := utils.NewKafkaManagerIngressForCR(instance)
-	if err := controllerutil.SetControllerReference(instance, kmi, r.scheme); err != nil {
+	kmi := utils.NewIngressForCRIfNotExists(instance)
+	/*if err := controllerutil.SetControllerReference(instance, kmi, r.scheme); err != nil {
 		return fmt.Errorf("SET Kafka Owner fail : %s", err)
-	}
+	}*/
 	foundKmi := &v1beta12.Ingress{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: kmi.Name, Namespace: kmi.Namespace}, foundKmi)
 
@@ -528,6 +530,13 @@ func (r *ReconcileKafka) reconcileKafkaManager(instance *jianzhiuniquev1.Kafka) 
 		instance.Status.Progress = 0.65
 	} else if err != nil {
 		return fmt.Errorf("GET kafka manager ingress fail : %s", err)
+	} else {
+		utils.AppendKafkaManagerPathToIngress(instance, foundKmi)
+		err = r.client.Update(context.TODO(), foundKmi)
+		if err != nil {
+			return fmt.Errorf("update kafka manager ingress fail : %s", err)
+		}
+		instance.Status.Progress = 0.65
 	}
 
 	return nil
@@ -684,22 +693,25 @@ func (r *ReconcileKafka) reconcileMQManagementTools(instance *jianzhiuniquev1.Ka
 	}
 
 	//check ingress
-	rmi := utils.NewToolsIngressForCR(instance)
-	if err := controllerutil.SetControllerReference(instance, rmi, r.scheme); err != nil {
+	rmi := utils.NewIngressForCRIfNotExists(instance)
+	/*if err := controllerutil.SetControllerReference(instance, rmi, r.scheme); err != nil {
 		return fmt.Errorf("SET ingress Owner fail : %s", err)
-	}
+	}*/
 	foundKmi := &v1beta12.Ingress{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: rmi.Name, Namespace: rmi.Namespace}, foundKmi)
 
 	if err != nil && errors.IsNotFound(err) {
-		r.log.Info("Creating a new MQManagementTools ingress", "Namespace", rmi.Namespace, "Name", rmi.Name)
-		err = r.client.Create(context.TODO(), rmi)
-		if err != nil {
-			return fmt.Errorf("Create rabbitmq management ingress fail : %s", err)
-		}
-		instance.Status.Progress = 0.8
+		r.log.Info("Missing ingress", "Namespace", rmi.Namespace, "Name", rmi.Name)
+		return fmt.Errorf("Missing ingress")
 	} else if err != nil {
 		return fmt.Errorf("GET rabbitmq management ingress fail : %s", err)
+	} else {
+		utils.AppendKafkaManagerPathToIngress(instance, foundKmi)
+		err = r.client.Update(context.TODO(), foundKmi)
+		if err != nil {
+			return fmt.Errorf("update kafka manager ingress fail : %s", err)
+		}
+		instance.Status.Progress = 0.8
 	}
 
 	return nil
