@@ -706,7 +706,7 @@ func (r *ReconcileKafka) reconcileMQManagementTools(instance *jianzhiuniquev1.Ka
 	} else if err != nil {
 		return fmt.Errorf("GET rabbitmq management ingress fail : %s", err)
 	} else {
-		utils.AppendKafkaManagerPathToIngress(instance, foundKmi)
+		utils.AppendKafkaToolsPathToIngress(instance, foundKmi)
 		err = r.client.Update(context.TODO(), foundKmi)
 		if err != nil {
 			return fmt.Errorf("update kafka manager ingress fail : %s", err)

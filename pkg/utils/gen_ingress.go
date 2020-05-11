@@ -70,7 +70,18 @@ func AppendKafkaManagerPathToIngress(cr *jianzhiuniquev1.Kafka, ingress *v1beta1
 		},
 	}
 
-	ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths = append(ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths, path)
+	var found bool
+
+	for _, path := range ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths {
+		if path.Path == "/(kfk-"+cr.Namespace+"-"+cr.Name+"/.*)" {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths = append(ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths, path)
+	}
 }
 
 func AppendKafkaToolsPathToIngress(cr *jianzhiuniquev1.Kafka, ingress *v1beta12.Ingress) {
@@ -84,5 +95,16 @@ func AppendKafkaToolsPathToIngress(cr *jianzhiuniquev1.Kafka, ingress *v1beta12.
 		},
 	}
 
-	ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths = append(ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths, path)
+	var found bool
+
+	for _, path := range ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths {
+		if path.Path == cr.Status.KafkaToolsPath+"(.*)" {
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths = append(ingress.Spec.Rules[0].IngressRuleValue.HTTP.Paths, path)
+	}
 }
