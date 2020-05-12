@@ -514,6 +514,8 @@ func (r *ReconcileKafka) reconcileKafkaManager(instance *jianzhiuniquev1.Kafka) 
 		return fmt.Errorf("GET kafka manager svc fail : %s", err)
 	}
 
+	//如果资源所在的ns 与 ingress所在的ns不同，需要额外创建ExternalName类型的svc
+
 	kmi := utils.NewIngressForCRIfNotExists(instance)
 	/*if err := controllerutil.SetControllerReference(instance, kmi, r.scheme); err != nil {
 		return fmt.Errorf("SET Kafka Owner fail : %s", err)

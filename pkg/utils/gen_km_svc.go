@@ -27,3 +27,25 @@ func NewKmSvcForCR(cr *jianzhiuniquev1.Kafka) *corev1.Service {
 		},
 	}
 }
+
+func NewKmExternalSvcForCR(cr *jianzhiuniquev1.Kafka) *corev1.Service {
+	port := corev1.ServicePort{Port: 9000}
+	ports := make([]corev1.ServicePort, 0)
+	ports = append(ports, port)
+
+	return &corev1.Service{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: "v1",
+			Kind:       "Service",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "external-kfk-m-svc-" + cr.Name,
+			Namespace: cr.Spec.IngressNamespace,
+		},
+		Spec: corev1.ServiceSpec{
+			Ports:        ports,
+			Type:         "ExternalName",
+			ExternalName: "kfk-m-svc-" + cr.Name + "." + cr.Namespace + ".svc.cluster.local",
+		},
+	}
+}
