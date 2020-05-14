@@ -286,6 +286,24 @@ func (r *ReconcileKafka) reconcileFinalizers(instance *jianzhiuniquev1.Kafka) (e
 			if err = r.cleanUpAllPVCs(instance); err != nil {
 				return err
 			}
+
+			//删除ingress path
+			foundIngress := &v1beta12.Ingress{}
+			err = r.client.Get(context.TODO(), types.NamespacedName{Name: "mq-ingress", Namespace: instance.Spec.IngressNamespace}, foundIngress)
+
+			if err != nil && errors.IsNotFound(err) {
+
+			} else if err != nil {
+
+			} else {
+				utils.DeleteKafkaManagerPathFromIngress(instance, foundIngress)
+				utils.DeleteKafkaToolsPathFromIngress(instance, foundIngress)
+				err = r.client.Update(context.TODO(), foundIngress)
+				if err != nil {
+					return fmt.Errorf("update ingress fail when reconcileFinalizers: %s", err)
+				}
+			}
+
 			instance.ObjectMeta.Finalizers = utils.RemoveString(instance.ObjectMeta.Finalizers, utils.KafkaFinalizer)
 			if err = r.client.Update(context.TODO(), instance); err != nil {
 				return err
@@ -515,6 +533,28 @@ func (r *ReconcileKafka) reconcileKafkaManager(instance *jianzhiuniquev1.Kafka) 
 	}
 
 	//如果资源所在的ns 与 ingress所在的ns不同，需要额外创建ExternalName类型的svc
+	if instance.Namespace != instance.Spec.IngressNamespace {
+		external := utils.NewKmExternalSvcForCR(instance)
+		//关联控制
+		if err := controllerutil.SetControllerReference(instance, external, r.scheme); err != nil {
+			return fmt.Errorf("SET Kafka manager external svc Owner fail : %s", err)
+		}
+		//检查是否已经存在
+		foundExternal := &corev1.Service{}
+		err = r.client.Get(context.TODO(), types.NamespacedName{Name: external.Name, Namespace: external.Namespace}, foundExternal)
+
+		if err != nil && errors.IsNotFound(err) {
+			//如果不存在新建
+			r.log.Info("Creating a new kafka manager svc", "Namespace", external.Namespace, "Name", external.Name)
+			err = r.client.Create(context.TODO(), external)
+			if err != nil {
+				return fmt.Errorf("Create kafka manager external svc fail : %s", err)
+			}
+		} else if err != nil {
+			//如果发生错误重新调谐
+			return fmt.Errorf("GET kafka manager external svc fail : %s", err)
+		}
+	}
 
 	kmi := utils.NewIngressForCRIfNotExists(instance)
 	/*if err := controllerutil.SetControllerReference(instance, kmi, r.scheme); err != nil {
@@ -692,6 +732,30 @@ func (r *ReconcileKafka) reconcileMQManagementTools(instance *jianzhiuniquev1.Ka
 		instance.Status.Progress = 0.75
 	} else if err != nil {
 		return fmt.Errorf("GET svc fail : %s", err)
+	}
+
+	//如果资源所在的ns 与 ingress所在的ns不同，需要额外创建ExternalName类型的svc
+	if instance.Namespace != instance.Spec.IngressNamespace {
+		external := utils.NewToolsExternalSvcForCR(instance)
+		//关联控制
+		if err := controllerutil.SetControllerReference(instance, external, r.scheme); err != nil {
+			return fmt.Errorf("SET Kafka tools external svc Owner fail : %s", err)
+		}
+		//检查是否已经存在
+		foundExternal := &corev1.Service{}
+		err = r.client.Get(context.TODO(), types.NamespacedName{Name: external.Name, Namespace: external.Namespace}, foundExternal)
+
+		if err != nil && errors.IsNotFound(err) {
+			//如果不存在新建
+			r.log.Info("Creating a new kafka tools external svc", "Namespace", external.Namespace, "Name", external.Name)
+			err = r.client.Create(context.TODO(), external)
+			if err != nil {
+				return fmt.Errorf("Create kafka tools external svc fail : %s", err)
+			}
+		} else if err != nil {
+			//如果发生错误重新调谐
+			return fmt.Errorf("GET kafka tools external svc fail : %s", err)
+		}
 	}
 
 	//check ingress

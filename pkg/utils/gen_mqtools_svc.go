@@ -40,7 +40,7 @@ func NewToolsExternalSvcForCR(cr *v1.Kafka) *corev1.Service {
 			Kind:       "Service",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "external-kfk-tools-svc-" + cr.Name,
+			Name:      "external-kfk-tools-svc-" + cr.Namespace + "-" + cr.Name,
 			Namespace: cr.Spec.IngressNamespace,
 		},
 		Spec: corev1.ServiceSpec{
