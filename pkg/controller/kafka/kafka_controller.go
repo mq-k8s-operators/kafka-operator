@@ -110,6 +110,15 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 		return err
 	}*/
 
+	// Watch for changes to secondary resource Deployment and requeue the owner Kafka
+	err = c.Watch(&source.Kind{Type: &v1.ServiceMonitor{}}, &handler.EnqueueRequestForOwner{
+		IsController: true,
+		OwnerType:    &jianzhiuniquev1.Kafka{},
+	})
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -137,8 +146,8 @@ type reconcileFun func(cluster *jianzhiuniquev1.Kafka) error
 // The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ReconcileKafka) Reconcile(request reconcile.Request) (reconcile.Result, error) {
-	r.log = log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
-	r.log.Info("Reconciling Kafka")
+	r.log = log.WithValues("Namespace", request.Namespace, "Name", request.Name)
+	r.log.Info("调谐中")
 
 	// Fetch the Kafka instance
 	// 获取Kafka CR
@@ -152,21 +161,23 @@ func (r *ReconcileKafka) Reconcile(request reconcile.Request) (reconcile.Result,
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
-		return reconcile.Result{}, fmt.Errorf("GET Kafka CR fail : %s", err)
+		return reconcile.Result{}, fmt.Errorf("获取CR失败: %s", err)
 	}
 
 	//check if default values will be used
+	//设置默认的配置
 	changed := utils.CheckCR(instance)
 
 	if changed {
-		r.log.Info("Setting default settings for kafka")
+		r.log.Info("设置默认配置")
 		if err := r.client.Update(context.TODO(), instance); err != nil {
-			return reconcile.Result{}, fmt.Errorf("Setting default fail : %s", err)
+			return reconcile.Result{}, fmt.Errorf("设置默认配置失败: %s", err)
 		}
 		//retry reconcile
 		return reconcile.Result{Requeue: true}, nil
 	}
 
+	// 生成常量值
 	if instance.Status.KafkaProxyUrl == "" {
 		instance.Status.KafkaProxyUrl = "kfk-mqp-svc-" + instance.Name + ":8080"
 	}
@@ -229,12 +240,13 @@ func (r *ReconcileKafka) Reconcile(request reconcile.Request) (reconcile.Result,
 		}
 	}
 
+	//生成常量值后马上保存一次状态
 	if err = r.reconcileClusterStatus(instance); err != nil {
 		return reconcile.Result{}, err
 	}
 
 	// reconcile
-	//reconcileKafkaManager与reconcileMQManagementTools有先后顺序
+	//由于ingress原因reconcileKafkaManager与reconcileMQManagementTools有先后顺序
 	for _, fun := range []reconcileFun{
 		r.reconcileFinalizers,
 		r.reconcileZooKeeper,
@@ -246,11 +258,9 @@ func (r *ReconcileKafka) Reconcile(request reconcile.Request) (reconcile.Result,
 		r.reconcileServiceMonitor,
 	} {
 		if err = fun(instance); err != nil {
-			r.log.Info("reconcileClusterStatus with error")
 			r.reconcileClusterStatus(instance)
 			return reconcile.Result{}, err
 		} else {
-			r.log.Info("reconcileClusterStatus without error")
 			r.reconcileClusterStatus(instance)
 		}
 	}
@@ -270,7 +280,7 @@ func GetRandomString(l int) string {
 }
 
 func (r *ReconcileKafka) reconcileFinalizers(instance *jianzhiuniquev1.Kafka) (err error) {
-	r.log.Info("instance.DeletionTimestamp is ", instance.DeletionTimestamp)
+	r.log.Info("最终调谐")
 	// instance is not deleted
 	if instance.DeletionTimestamp.IsZero() {
 		if !utils.ContainsString(instance.ObjectMeta.Finalizers, utils.KafkaFinalizer) {
@@ -281,6 +291,7 @@ func (r *ReconcileKafka) reconcileFinalizers(instance *jianzhiuniquev1.Kafka) (e
 		}
 		return r.cleanupOrphanPVCs(instance)
 	} else {
+		r.log.Info("最终调谐", "时间戳", instance.DeletionTimestamp)
 		// instance is deleted
 		if utils.ContainsString(instance.ObjectMeta.Finalizers, utils.KafkaFinalizer) {
 			if err = r.cleanUpAllPVCs(instance); err != nil {
@@ -300,7 +311,7 @@ func (r *ReconcileKafka) reconcileFinalizers(instance *jianzhiuniquev1.Kafka) (e
 				utils.DeleteKafkaToolsPathFromIngress(instance, foundIngress)
 				err = r.client.Update(context.TODO(), foundIngress)
 				if err != nil {
-					return fmt.Errorf("update ingress fail when reconcileFinalizers: %s", err)
+					return fmt.Errorf("删除ingress path出现问题: %s", err)
 				}
 			}
 
@@ -324,13 +335,15 @@ func (r *ReconcileKafka) getPVCCount(instance *jianzhiuniquev1.Kafka) (pvcCount 
 
 func (r *ReconcileKafka) cleanupOrphanPVCs(instance *jianzhiuniquev1.Kafka) (err error) {
 	// this check should make sure we do not delete the PVCs before the STS has scaled down
+	// 确保不会在伸缩时删掉PVC
 	if instance.Status.Replicas == instance.Spec.Size {
 		pvcCount, err := r.getPVCCount(instance)
 		if err != nil {
 			return err
 		}
-		r.log.Info("cleanupOrphanPVCs", "PVC Count", pvcCount, "ReadyReplicas Count", instance.Status.Replicas)
+
 		if pvcCount > int(instance.Spec.Size) {
+			r.log.Info("清理孤儿PVC", "当前PVC数", pvcCount, "副本数", instance.Status.Replicas)
 			pvcList, err := r.getPVCList(instance)
 			if err != nil {
 				return err
@@ -377,18 +390,19 @@ func (r *ReconcileKafka) deletePVC(pvcItem corev1.PersistentVolumeClaim) {
 			Namespace: pvcItem.Namespace,
 		},
 	}
-	r.log.Info("Deleting PVC", "With Name", pvcItem.Name)
+	r.log.Info("删除PVC", "名称", pvcItem.Name)
 	err := r.client.Delete(context.TODO(), pvcDelete)
 	if err != nil {
-		r.log.Error(err, "Error deleteing PVC.", "Name", pvcDelete.Name)
+		r.log.Error(err, "删除PVC失败", "名称", pvcDelete.Name)
 	}
 }
 
 func (r *ReconcileKafka) reconcileZooKeeper(instance *jianzhiuniquev1.Kafka) (err error) {
+	r.log.Info("调谐zk")
 	zk := utils.NewZkForCR(instance)
 	// Set zk instance as the owner and controller
 	if err := controllerutil.SetControllerReference(instance, zk, r.scheme); err != nil {
-		return fmt.Errorf("SET ZK Owner fail : %s", err)
+		return fmt.Errorf("设置zk控制器引用失败: %s", err)
 	}
 
 	//检查zk是否存在
@@ -396,16 +410,16 @@ func (r *ReconcileKafka) reconcileZooKeeper(instance *jianzhiuniquev1.Kafka) (er
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: zk.Name, Namespace: zk.Namespace}, foundzk)
 	//如果sts不存在,新建
 	if err != nil && errors.IsNotFound(err) {
-		r.log.Info("Creating a new Zk", "Namespace", zk.Namespace, "Name", zk.Name)
+		r.log.Info("创建zk", "名称", zk.Name)
 
 		err = r.client.Create(context.TODO(), zk)
 		if err != nil {
-			return fmt.Errorf("Create ZK Fail : %s", err)
+			return fmt.Errorf("创建zk失败: %s", err)
 		}
 		//创建zk成功,继续进行
 	} else if err != nil {
 		//有异常
-		return fmt.Errorf("GET ZK Fail : %s", err)
+		return fmt.Errorf("获取zk失败: %s", err)
 	} else {
 		//检查是否有变化，如果有变化，则Update
 		//对于zk，目前只更新节点数
@@ -413,7 +427,7 @@ func (r *ReconcileKafka) reconcileZooKeeper(instance *jianzhiuniquev1.Kafka) (er
 			foundzk.Spec.Replicas = zk.Spec.Replicas
 			err = r.client.Update(context.TODO(), foundzk)
 			if err != nil {
-				return fmt.Errorf("Update ZK Fail : %s", err)
+				return fmt.Errorf("更新zk失败: %s", err)
 			}
 		}
 	}
@@ -421,23 +435,24 @@ func (r *ReconcileKafka) reconcileZooKeeper(instance *jianzhiuniquev1.Kafka) (er
 	//检查zk是否就绪
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: zk.Name, Namespace: zk.Namespace}, foundzk)
 	if err != nil {
-		return fmt.Errorf("CHECK ZK Status Fail : %s", err)
+		return fmt.Errorf("检查可用获取zk失败: %s", err)
 	}
 	if foundzk.Status.ReadyReplicas != zk.Spec.Replicas {
 		instance.Status.Progress = float32(foundzk.Status.ReadyReplicas) / float32(zk.Spec.Replicas) * 0.3
-		r.log.Info("Zk Not Ready", "Namespace", zk.Namespace, "Name", zk.Name)
-		return fmt.Errorf("Zk Not Ready")
+		r.log.Info("Zk未就绪", "名称", zk.Name)
+		return fmt.Errorf("Zk未就绪")
 	}
-	r.log.Info("Zk Ready", "Namespace", zk.Namespace, "Name", zk.Name)
+	r.log.Info("Zk已就绪", "名称", zk.Name)
 
 	return nil
 }
 
 func (r *ReconcileKafka) reconcileKafka(instance *jianzhiuniquev1.Kafka) (err error) {
+	r.log.Info("调谐kafka")
 	sts := utils.NewStsForCR(instance)
 	// Set Kafka instance as the owner and controller
 	if err := controllerutil.SetControllerReference(instance, sts, r.scheme); err != nil {
-		return fmt.Errorf("SET Kafka Owner fail : %s", err)
+		return fmt.Errorf("设置kafka控制器引用失败: %s", err)
 	}
 
 	//检查sts是否存在
@@ -445,91 +460,92 @@ func (r *ReconcileKafka) reconcileKafka(instance *jianzhiuniquev1.Kafka) (err er
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace}, found)
 	//如果sts不存在,新建
 	if err != nil && errors.IsNotFound(err) {
-		r.log.Info("Creating a new Sts", "Sts.Namespace", sts.Namespace, "Sts.Name", sts.Name)
+		r.log.Info("创建sts", "名称", sts.Name)
 		err = r.client.Create(context.TODO(), sts)
 		if err != nil {
-			return fmt.Errorf("Create sts fail : %s", err)
+			return fmt.Errorf("创建sts失败: %s", err)
 		}
 	} else if err != nil {
 		//有异常
-		return fmt.Errorf("GET sts fail : %s", err)
+		return fmt.Errorf("获取sts失败: %s", err)
 	} else {
 		utils.SyncKafkaSts(found, sts)
 		err = r.client.Update(context.TODO(), found)
 		if err != nil {
-			return fmt.Errorf("Update ZK Fail : %s", err)
+			return fmt.Errorf("更新sts失败: %s", err)
 		}
 	}
 
 	//检查kfk是否可用
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: sts.Name, Namespace: sts.Namespace}, found)
 	if err != nil {
-		return fmt.Errorf("CHECK kafka Status Fail : %s", err)
+		return fmt.Errorf("检查可用获取sts失败: %s", err)
 	}
 	if found.Status.ReadyReplicas != instance.Spec.Size {
-		r.log.Info("kafka Not Ready", "Namespace", sts.Namespace, "Name", sts.Name)
+		r.log.Info("kafka未就绪", "名称", sts.Name)
 		instance.Status.Progress = float32(found.Status.ReadyReplicas)/float32(found.Status.Replicas)*0.3 + 0.3
-		return fmt.Errorf("kafka Not Ready")
+		return fmt.Errorf("kafka未就绪")
 	}
-	r.log.Info("kafka Ready", "Namespace", sts.Namespace, "Name", sts.Name)
+	r.log.Info("kafka已就绪", "名称", sts.Name)
 	//update KafkaReplicas when kafka is ready
 	instance.Status.Replicas = instance.Spec.Size
 
 	//创建kafka service
 	svc := utils.NewSvcForCR(instance)
 	if err := controllerutil.SetControllerReference(instance, svc, r.scheme); err != nil {
-		return fmt.Errorf("SET Kafka Owner fail : %s", err)
+		return fmt.Errorf("设置kafka svc控制器引用失败: %s", err)
 	}
 	foundSvc := &corev1.Service{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: svc.Name, Namespace: svc.Namespace}, foundSvc)
 
 	if err != nil && errors.IsNotFound(err) {
-		r.log.Info("Creating a new kafka headless svc", "Svc.Namespace", svc.Namespace, "Svc.Name", svc.Name)
+		r.log.Info("创建kafka headless svc", "名称", svc.Name)
 		err = r.client.Create(context.TODO(), svc)
 		if err != nil {
-			return fmt.Errorf("Create kafka headless svc fail : %s", err)
+			return fmt.Errorf("创建kafka headless svc失败: %s", err)
 		}
 	} else if err != nil {
-		return fmt.Errorf("GET svc fail : %s", err)
+		return fmt.Errorf("获取kafka headless svc失败: %s", err)
 	}
 
 	return nil
 }
 
 func (r *ReconcileKafka) reconcileKafkaManager(instance *jianzhiuniquev1.Kafka) (err error) {
+	r.log.Info("调谐kafka manager")
 	km := utils.NewKafkaManagerForCR(instance)
 
 	if err := controllerutil.SetControllerReference(instance, km, r.scheme); err != nil {
-		return fmt.Errorf("SET Kafka Owner fail : %s", err)
+		return fmt.Errorf("设置kafka manager控制器引用失败: %s", err)
 	}
 	foundKm := &appsv1.Deployment{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: km.Name, Namespace: km.Namespace}, foundKm)
 
 	if err != nil && errors.IsNotFound(err) {
-		r.log.Info("Creating a new kafka manager deployment", "Namespace", km.Namespace, "Name", km.Name)
+		r.log.Info("创建kafka manager", "名称", km.Name)
 		err = r.client.Create(context.TODO(), km)
 		if err != nil {
-			return fmt.Errorf("Create kafka manager deployment fail : %s", err)
+			return fmt.Errorf("创建kafka manager失败: %s", err)
 		}
 	} else if err != nil {
-		return fmt.Errorf("GET kafka manager deployment fail : %s", err)
+		return fmt.Errorf("获取kafka manager失败: %s", err)
 	}
 
 	kmsvc := utils.NewKmSvcForCR(instance)
 	if err := controllerutil.SetControllerReference(instance, kmsvc, r.scheme); err != nil {
-		return fmt.Errorf("SET Kafka Owner fail : %s", err)
+		return fmt.Errorf("设置kafka manager svc控制器引用失败: %s", err)
 	}
 	foundKmSvc := &corev1.Service{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: kmsvc.Name, Namespace: kmsvc.Namespace}, foundKmSvc)
 
 	if err != nil && errors.IsNotFound(err) {
-		r.log.Info("Creating a new kafka manager svc", "Namespace", kmsvc.Namespace, "Name", kmsvc.Name)
+		r.log.Info("创建kafka manager svc", "名称", kmsvc.Name)
 		err = r.client.Create(context.TODO(), kmsvc)
 		if err != nil {
-			return fmt.Errorf("Create kafka manager svc fail : %s", err)
+			return fmt.Errorf("创建kafka manager svc失败: %s", err)
 		}
 	} else if err != nil {
-		return fmt.Errorf("GET kafka manager svc fail : %s", err)
+		return fmt.Errorf("获取kafka manager svc失败: %s", err)
 	}
 
 	//如果资源所在的ns 与 ingress所在的ns不同，需要额外创建ExternalName类型的svc
@@ -537,7 +553,7 @@ func (r *ReconcileKafka) reconcileKafkaManager(instance *jianzhiuniquev1.Kafka) 
 		external := utils.NewKmExternalSvcForCR(instance)
 		//关联控制
 		if err := controllerutil.SetControllerReference(instance, external, r.scheme); err != nil {
-			return fmt.Errorf("SET Kafka manager external svc Owner fail : %s", err)
+			return fmt.Errorf("设置Kafka manager external svc控制器引用失败: %s", err)
 		}
 		//检查是否已经存在
 		foundExternal := &corev1.Service{}
@@ -545,14 +561,14 @@ func (r *ReconcileKafka) reconcileKafkaManager(instance *jianzhiuniquev1.Kafka) 
 
 		if err != nil && errors.IsNotFound(err) {
 			//如果不存在新建
-			r.log.Info("Creating a new kafka manager svc", "Namespace", external.Namespace, "Name", external.Name)
+			r.log.Info("创建Kafka manager external svc", "名称", external.Name)
 			err = r.client.Create(context.TODO(), external)
 			if err != nil {
-				return fmt.Errorf("Create kafka manager external svc fail : %s", err)
+				return fmt.Errorf("创建Kafka manager external svc失败: %s", err)
 			}
 		} else if err != nil {
 			//如果发生错误重新调谐
-			return fmt.Errorf("GET kafka manager external svc fail : %s", err)
+			return fmt.Errorf("获取Kafka manager external svc失败: %s", err)
 		}
 	}
 
@@ -564,19 +580,19 @@ func (r *ReconcileKafka) reconcileKafkaManager(instance *jianzhiuniquev1.Kafka) 
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: kmi.Name, Namespace: kmi.Namespace}, foundKmi)
 
 	if err != nil && errors.IsNotFound(err) {
-		r.log.Info("Creating a new kafka manager ingress", "Namespace", kmi.Namespace, "Name", kmi.Name)
+		r.log.Info("创建kafka manager ingress", "名称", kmi.Name)
 		err = r.client.Create(context.TODO(), kmi)
 		if err != nil {
-			return fmt.Errorf("Create kafka manager ingress fail : %s", err)
+			return fmt.Errorf("创建kafka manager ingress失败: %s", err)
 		}
 		instance.Status.Progress = 0.65
 	} else if err != nil {
-		return fmt.Errorf("GET kafka manager ingress fail : %s", err)
+		return fmt.Errorf("获取kafka manager ingress失败: %s", err)
 	} else {
 		utils.AppendKafkaManagerPathToIngress(instance, foundKmi)
 		err = r.client.Update(context.TODO(), foundKmi)
 		if err != nil {
-			return fmt.Errorf("update kafka manager ingress fail : %s", err)
+			return fmt.Errorf("追加ingress path失败: %s", err)
 		}
 		instance.Status.Progress = 0.65
 	}
@@ -585,41 +601,42 @@ func (r *ReconcileKafka) reconcileKafkaManager(instance *jianzhiuniquev1.Kafka) 
 }
 
 func (r *ReconcileKafka) reconcileKafkaProxy(instance *jianzhiuniquev1.Kafka) (err error) {
+	r.log.Info("调谐kafka proxy")
 	//check
 	dep := utils.NewProxyForCR(instance)
 	if err := controllerutil.SetControllerReference(instance, dep, r.scheme); err != nil {
-		return fmt.Errorf("SET proxy Owner fail : %s", err)
+		return fmt.Errorf("设置proxy控制器引用失败: %s", err)
 	}
 	found := &appsv1.Deployment{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: dep.Name, Namespace: dep.Namespace}, found)
 
 	if err != nil && errors.IsNotFound(err) {
-		r.log.Info("Creating a new Proxy", "Namespace", dep.Namespace, "Name", dep.Name)
+		r.log.Info("创建proxy", "名称", dep.Name)
 		err = r.client.Create(context.TODO(), dep)
 		if err != nil {
-			return fmt.Errorf("Create proxy fail : %s", err)
+			return fmt.Errorf("创建proxy失败: %s", err)
 		}
 	} else if err != nil {
-		return fmt.Errorf("GET proxy fail : %s", err)
+		return fmt.Errorf("获取proxy失败: %s", err)
 	}
 
 	//check svc
 	svc := utils.NewMqpSvcForCR(instance)
 	if err := controllerutil.SetControllerReference(instance, svc, r.scheme); err != nil {
-		return fmt.Errorf("SET mqp svc Owner fail : %s", err)
+		return fmt.Errorf("设置proxy svc控制器引用失败: %s", err)
 	}
 	foundSvc := &corev1.Service{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: svc.Name, Namespace: svc.Namespace}, foundSvc)
 
 	if err != nil && errors.IsNotFound(err) {
-		r.log.Info("Creating proxy svc", "Namespace", svc.Namespace, "Name", svc.Name)
+		r.log.Info("创建proxy svc", "名称", svc.Name)
 		err = r.client.Create(context.TODO(), svc)
 		if err != nil {
-			return fmt.Errorf("Create proxy svc fail : %s", err)
+			return fmt.Errorf("创建proxy svc失败: %s", err)
 		}
 		instance.Status.Progress = 1.0
 	} else if err != nil {
-		return fmt.Errorf("GET proxy svc fail : %s", err)
+		return fmt.Errorf("获取proxy svc失败: %s", err)
 	}
 
 	instance.Status.Progress = 1.0
@@ -628,41 +645,42 @@ func (r *ReconcileKafka) reconcileKafkaProxy(instance *jianzhiuniquev1.Kafka) (e
 }
 
 func (r *ReconcileKafka) reconcileKafkaExporter(instance *jianzhiuniquev1.Kafka) (err error) {
+	r.log.Info("调谐kafka exporter")
 	//check
 	dep := utils.NewExporterForCR(instance)
 	if err := controllerutil.SetControllerReference(instance, dep, r.scheme); err != nil {
-		return fmt.Errorf("SET exporter Owner fail : %s", err)
+		return fmt.Errorf("设置exporter控制器引用失败: %s", err)
 	}
 	found := &appsv1.Deployment{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: dep.Name, Namespace: dep.Namespace}, found)
 
 	if err != nil && errors.IsNotFound(err) {
-		r.log.Info("Creating a new exporter", "Namespace", dep.Namespace, "Name", dep.Name)
+		r.log.Info("创建exporter", "名称", dep.Name)
 		err = r.client.Create(context.TODO(), dep)
 		if err != nil {
-			return fmt.Errorf("Create exporter fail : %s", err)
+			return fmt.Errorf("创建exporter失败: %s", err)
 		}
 	} else if err != nil {
-		return fmt.Errorf("GET exporter fail : %s", err)
+		return fmt.Errorf("获取exporter失败: %s", err)
 	}
 
 	//check svc
 	svc := utils.NewExporterSvcForCR(instance)
 	if err := controllerutil.SetControllerReference(instance, svc, r.scheme); err != nil {
-		return fmt.Errorf("SET exporter svc Owner fail : %s", err)
+		return fmt.Errorf("设置exporter svc控制器引用失败: %s", err)
 	}
 	foundSvc := &corev1.Service{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: svc.Name, Namespace: svc.Namespace}, foundSvc)
 
 	if err != nil && errors.IsNotFound(err) {
-		r.log.Info("Creating exporter svc", "Namespace", svc.Namespace, "Name", svc.Name)
+		r.log.Info("创建exporter svc", "名称", svc.Name)
 		err = r.client.Create(context.TODO(), svc)
 		if err != nil {
-			return fmt.Errorf("Create exporter svc fail : %s", err)
+			return fmt.Errorf("创建exporter svc 失败: %s", err)
 		}
 		instance.Status.Progress = 1.0
 	} else if err != nil {
-		return fmt.Errorf("GET exporter svc fail : %s", err)
+		return fmt.Errorf("获取exporter svc失败: %s", err)
 	}
 	instance.Status.Progress = 1.0
 
@@ -670,68 +688,71 @@ func (r *ReconcileKafka) reconcileKafkaExporter(instance *jianzhiuniquev1.Kafka)
 }
 
 func (r *ReconcileKafka) reconcileServiceMonitor(instance *jianzhiuniquev1.Kafka) (err error) {
+	r.log.Info("调谐service monitor")
 	svcm := utils.NewSvcMonitorForCR(instance)
 	if err := controllerutil.SetControllerReference(instance, svcm, r.scheme); err != nil {
-		return fmt.Errorf("SET svcm Owner fail : %s", err)
+		return fmt.Errorf("设置 service monitor控制器引用失败:%s", err)
 	}
 	foundSvcm := &v1.ServiceMonitor{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: foundSvcm.Name, Namespace: foundSvcm.Namespace}, foundSvcm)
+	err = r.client.Get(context.TODO(), types.NamespacedName{Name: svcm.Name, Namespace: svcm.Namespace}, foundSvcm)
 
 	if err != nil && errors.IsNotFound(err) {
-		r.log.Info("Creating exporter svc", "Namespace", svcm.Namespace, "Name", svcm.Name)
+		r.log.Info("创建service monitor", "名称", svcm.Name)
 		err = r.client.Create(context.TODO(), svcm)
 		if err != nil {
-			return fmt.Errorf("Create svcm fail : %s", err)
+			return fmt.Errorf("创建service monitor失败: %s", err)
 		}
 		instance.Status.Progress = 1.0
 	} else if err != nil {
-		return fmt.Errorf("GET svcm fail : %s", err)
+		return fmt.Errorf("获取service monitor失败: %s", err)
 	}
 
 	return nil
 }
 
 func (r *ReconcileKafka) reconcileClusterStatus(instance *jianzhiuniquev1.Kafka) (err error) {
+	r.log.Info("调谐状态")
 	return r.client.Status().Update(context.TODO(), instance)
 }
 
 func (r *ReconcileKafka) reconcileMQManagementTools(instance *jianzhiuniquev1.Kafka) error {
+	r.log.Info("调谐kafka tools")
 	//check
 	dep := utils.NewToolsForCR(instance)
 	if err := controllerutil.SetControllerReference(instance, dep, r.scheme); err != nil {
-		return fmt.Errorf("SET proxy Owner fail : %s", err)
+		return fmt.Errorf("设置管理工具控制器引用失败: %s", err)
 	}
 	found := &appsv1.Deployment{}
 	err := r.client.Get(context.TODO(), types.NamespacedName{Name: dep.Name, Namespace: dep.Namespace}, found)
 
 	if err != nil && errors.IsNotFound(err) {
-		r.log.Info("Creating a new MQManagementTools", "Namespace", dep.Namespace, "Name", dep.Name)
+		r.log.Info("创建管理工具", "名称", dep.Name)
 		err = r.client.Create(context.TODO(), dep)
 		if err != nil {
-			return fmt.Errorf("Create proxy fail : %s", err)
+			return fmt.Errorf("创建管理工具失败: %s", err)
 		}
 		instance.Status.Progress = 0.7
 	} else if err != nil {
-		return fmt.Errorf("GET proxy fail : %s", err)
+		return fmt.Errorf("获取管理工具失败: %s", err)
 	}
 
 	//check svc
 	svc := utils.NewToolsSvcForCR(instance)
 	if err := controllerutil.SetControllerReference(instance, svc, r.scheme); err != nil {
-		return fmt.Errorf("SET Management SVC Owner fail : %s", err)
+		return fmt.Errorf("设置管理工具svc控制器引用失败: %s", err)
 	}
 	foundSvc := &corev1.Service{}
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: svc.Name, Namespace: svc.Namespace}, foundSvc)
 
 	if err != nil && errors.IsNotFound(err) {
-		r.log.Info("Creating a new MQManagementTools svc", "Svc.Namespace", svc.Namespace, "Svc.Name", svc.Name)
+		r.log.Info("创建管理工具 svc", "名称", svc.Name)
 		err = r.client.Create(context.TODO(), svc)
 		if err != nil {
-			return fmt.Errorf("Create headless svc fail : %s", err)
+			return fmt.Errorf("创建管理工具 svc失败: %s", err)
 		}
 		instance.Status.Progress = 0.75
 	} else if err != nil {
-		return fmt.Errorf("GET svc fail : %s", err)
+		return fmt.Errorf("获取管理工具 svc失败: %s", err)
 	}
 
 	//如果资源所在的ns 与 ingress所在的ns不同，需要额外创建ExternalName类型的svc
@@ -739,7 +760,7 @@ func (r *ReconcileKafka) reconcileMQManagementTools(instance *jianzhiuniquev1.Ka
 		external := utils.NewToolsExternalSvcForCR(instance)
 		//关联控制
 		if err := controllerutil.SetControllerReference(instance, external, r.scheme); err != nil {
-			return fmt.Errorf("SET Kafka tools external svc Owner fail : %s", err)
+			return fmt.Errorf("设置管理工具external svc控制器引用失败: %s", err)
 		}
 		//检查是否已经存在
 		foundExternal := &corev1.Service{}
@@ -747,14 +768,14 @@ func (r *ReconcileKafka) reconcileMQManagementTools(instance *jianzhiuniquev1.Ka
 
 		if err != nil && errors.IsNotFound(err) {
 			//如果不存在新建
-			r.log.Info("Creating a new kafka tools external svc", "Namespace", external.Namespace, "Name", external.Name)
+			r.log.Info("创建管理工具external svc", "名称", external.Name)
 			err = r.client.Create(context.TODO(), external)
 			if err != nil {
-				return fmt.Errorf("Create kafka tools external svc fail : %s", err)
+				return fmt.Errorf("创建管理工具external svc失败: %s", err)
 			}
 		} else if err != nil {
 			//如果发生错误重新调谐
-			return fmt.Errorf("GET kafka tools external svc fail : %s", err)
+			return fmt.Errorf("获取管理工具external svc失败: %s", err)
 		}
 	}
 
@@ -767,15 +788,15 @@ func (r *ReconcileKafka) reconcileMQManagementTools(instance *jianzhiuniquev1.Ka
 	err = r.client.Get(context.TODO(), types.NamespacedName{Name: rmi.Name, Namespace: rmi.Namespace}, foundKmi)
 
 	if err != nil && errors.IsNotFound(err) {
-		r.log.Info("Missing ingress", "Namespace", rmi.Namespace, "Name", rmi.Name)
-		return fmt.Errorf("Missing ingress")
+		r.log.Info("未找到ingress", "名称", rmi.Name)
+		return fmt.Errorf("未找到ingress")
 	} else if err != nil {
-		return fmt.Errorf("GET rabbitmq management ingress fail : %s", err)
+		return fmt.Errorf("获取ingress失败: %s", err)
 	} else {
 		utils.AppendKafkaToolsPathToIngress(instance, foundKmi)
 		err = r.client.Update(context.TODO(), foundKmi)
 		if err != nil {
-			return fmt.Errorf("update kafka manager ingress fail : %s", err)
+			return fmt.Errorf("追加管理工具ingress path失败: %s", err)
 		}
 		instance.Status.Progress = 0.8
 	}
