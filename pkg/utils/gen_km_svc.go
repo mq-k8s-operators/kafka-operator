@@ -39,7 +39,7 @@ func NewKmExternalSvcForCR(cr *jianzhiuniquev1.Kafka) *corev1.Service {
 			Kind:       "Service",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "external-kfk-m-svc-" + cr.Namespace + "-" + cr.Name,
+			Name:      "external" + cr.Namespace + "-kfk-m-svc-" + cr.Name,
 			Namespace: cr.Spec.IngressNamespace,
 		},
 		Spec: corev1.ServiceSpec{

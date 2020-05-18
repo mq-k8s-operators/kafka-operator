@@ -9,9 +9,9 @@ import (
 
 func NewIngressForCRIfNotExists(cr *jianzhiuniquev1.Kafka) *v1beta12.Ingress {
 	//通过比较资源的ns与ingress的配置ns来确定servicename要不要用external
-	servicename := "kfk-m-svc-" + cr.Namespace + "-" + cr.Name
+	servicename := "kfk-m-svc-" + cr.Name
 	if cr.Namespace != cr.Spec.IngressNamespace {
-		servicename = "external-" + servicename
+		servicename = "external-" + cr.Namespace + "-" + servicename
 	}
 
 	var annotations map[string]string
@@ -64,9 +64,9 @@ func NewIngressForCRIfNotExists(cr *jianzhiuniquev1.Kafka) *v1beta12.Ingress {
 
 func AppendKafkaManagerPathToIngress(cr *jianzhiuniquev1.Kafka, ingress *v1beta12.Ingress) {
 	//通过比较资源的ns与ingress的配置ns来确定servicename要不要用external
-	servicename := "kfk-m-svc-" + cr.Namespace + "-" + cr.Name
+	servicename := "kfk-m-svc-" + cr.Name
 	if cr.Namespace != cr.Spec.IngressNamespace {
-		servicename = "external-" + servicename
+		servicename = "external-" + cr.Namespace + "-" + servicename
 	}
 
 	if cr.Spec.KafkaManagerBasePath != "" {
@@ -111,9 +111,9 @@ func DeleteKafkaManagerPathFromIngress(cr *jianzhiuniquev1.Kafka, ingress *v1bet
 
 func AppendKafkaToolsPathToIngress(cr *jianzhiuniquev1.Kafka, ingress *v1beta12.Ingress) {
 	//通过比较资源的ns与ingress的配置ns来确定servicename要不要用external
-	servicename := "kfk-tools-svc-" + cr.Namespace + "-" + cr.Name
+	servicename := "kfk-tools-svc-" + cr.Name
 	if cr.Namespace != cr.Spec.IngressNamespace {
-		servicename = "external-" + servicename
+		servicename = "external-" + cr.Namespace + "-" + servicename
 	}
 
 	path := v1beta12.HTTPIngressPath{
